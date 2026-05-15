@@ -1,0 +1,11 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pillow==11.0.0
+pydantic==2.10.4
+httpx==0.28.1
+
+# Optional extraction/OCR providers. The service degrades gracefully when these
+# native dependencies are unavailable on a laptop.
+pymupdf==1.25.1
+pytesseract==0.3.13

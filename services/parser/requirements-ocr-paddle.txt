@@ -1,0 +1,6 @@
+# Optional preferred OCR backend for layout-aware document/screenshot parsing.
+# PaddlePaddle 3.3.x currently has a CPU inference regression on Linux for
+# PaddleOCR/PaddleX, so keep the runtime pinned until that upstream issue clears.
+paddlepaddle==3.2.2
+paddleocr==3.5.0
+numpy==2.3.5

@@ -1,0 +1,23 @@
+{
+  "name": "images-to-md-briefing-tool",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Internal screenshot briefing workflow for extracting, reviewing, and exporting build-ready artifacts.",
+  "scripts": {
+    "dev": "npm --workspace apps/web run dev",
+    "build": "npm --workspace apps/web run build",
+    "lint": "npm --workspace apps/web run lint",
+    "typecheck": "npm --workspace apps/web run typecheck",
+    "parser:dev": "cd services/parser && uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "check": "bash scripts/governance-preflight.sh && npm run typecheck && npm run lint"
+  },
+  "workspaces": [
+    "apps/web"
+  ],
+  "overrides": {
+    "postcss": "8.5.14"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
