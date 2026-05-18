@@ -11,7 +11,7 @@ from PIL import Image
 from app.models.schemas import ArtifactCategory, ArtifactSubtype, ArtifactType, ExtractedArtifact, ParseResponse
 from app.services.classifier import classify_artifact
 from app.services.interpreter import build_interpretation
-from app.services.llm import interpret_image_with_claude
+from app.services.llm import apply_reviewer_guidance, interpret_image_with_claude
 from app.services.ocr import extract_ocr
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
@@ -157,7 +157,7 @@ def interpret_image_candidate(
     json_output["interpretation_confidence"] = confidence
     json_output["layout_data"] = ocr_result.layout_data
     if reviewer_notes:
-        json_output["reviewer_notes"] = reviewer_notes
+        markdown = apply_reviewer_guidance(markdown, json_output, reviewer_notes)
     return (
         ExtractedArtifact(
             source_filename=source_filename,

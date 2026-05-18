@@ -169,6 +169,7 @@ def interpret_image_with_claude(
             "review_status": "draft",
         }
     )
+    markdown = apply_reviewer_guidance(markdown, data, reviewer_notes)
     return VisionInterpretation(
         backend="claude_vision",
         confidence=confidence,
@@ -254,6 +255,7 @@ def interpret_image_with_claude_code(
                 "review_status": "draft",
             }
         )
+        markdown = apply_reviewer_guidance(markdown, data, reviewer_notes)
         return VisionInterpretation(
             backend="claude_code_account",
             confidence=confidence,
@@ -347,12 +349,57 @@ def claude_code_timeout_seconds() -> int:
         return 180
 
 
+def apply_reviewer_guidance(markdown: str, data: dict[str, Any], reviewer_notes: str) -> str:
+    notes = reviewer_notes.strip()
+    if not notes:
+        data.setdefault("reviewer_guidance", {"provided": False})
+        return markdown
+
+    existing = data.get("reviewer_guidance")
+    existing_guidance = existing if isinstance(existing, dict) else {}
+    existing_conflicts = existing_guidance.get("conflicts")
+    data["reviewer_notes"] = notes
+    data["reviewer_guidance"] = {
+        "provided": True,
+        "notes": notes,
+        "strength": "strong_focus_guidance_not_full_override",
+        "application": existing_guidance.get(
+            "application",
+            "Use these notes as the primary focus and intent signal, while checking them against visible evidence.",
+        ),
+        "visual_support": existing_guidance.get(
+            "visual_support",
+            "Generated interpretation must state whether the image supports, partially supports, or conflicts with the notes.",
+        ),
+        "conflicts": existing_conflicts if isinstance(existing_conflicts, list) else [],
+    }
+
+    if re.search(r"^#{1,6}\s+Reviewer guidance\b", markdown, re.IGNORECASE | re.MULTILINE):
+        if notes in markdown:
+            return markdown
+        source_notes_section = f"""### Source reviewer notes
+{notes}
+"""
+        return (markdown.rstrip() + "\n\n" + source_notes_section).strip() + "\n"
+
+    guidance_section = f"""### Reviewer guidance
+{notes}
+
+### Guidance reconciliation
+- Treat the reviewer guidance as strong focus and intent, not as a full visual override.
+- If another section conflicts with this guidance, keep that conflict explicit in Ambiguities rather than dropping the guidance.
+"""
+    return (markdown.rstrip() + "\n\n" + guidance_section).strip() + "\n"
+
+
 def build_prompt(payload: OutputPackageRequest) -> str:
     return f"""Create a concise {payload.package_type} from these approved screenshot artifacts.
 
 Rules:
 - Use only approved reviewed artifact content.
-- Treat reviewer_notes as human guidance for focus, ambiguity resolution, and intent; do not treat notes as direct visual evidence unless supported by edited artifact content.
+- Treat reviewer_notes as strong human guidance for focus, ambiguity resolution, and intent, but not as a total override.
+- If reviewer_notes conflict with other artifact interpretation fields, preserve the reviewer guidance and call out the conflict instead of silently choosing the model interpretation.
+- When reviewer_notes are present, include them in the relevant artifact section and explain how they should shape downstream implementation.
 - Preserve source traceability when present.
 - Keep ambiguities explicit.
 - Return Markdown only.
@@ -388,7 +435,12 @@ Source:
 Reviewer guidance:
 {reviewer_guidance}
 
-Use reviewer guidance as a focus and interpretation hint, especially for abstract visuals or screenshots where the important region is not obvious. Do not treat notes as visual evidence by themselves; reconcile them with what the image supports and put uncertainty in ambiguities.
+Reviewer guidance policy:
+- Treat reviewer guidance as strong human intent about what matters in the image, especially for abstract visuals or screenshots where the important region is not obvious.
+- Do not treat guidance as a full override or as direct visual evidence by itself.
+- Reconcile guidance with the visible image: when the image supports the guidance, make that the primary interpretation; when support is partial or uncertain, keep the guidance visible and list the uncertainty in ambiguities.
+- If your visual interpretation conflicts with reviewer guidance, explicitly describe the conflict instead of ignoring the guidance.
+- The Markdown output must include a "Reviewer guidance" section whenever guidance is provided.
 
 Classify with this two-level taxonomy:
 - category: ui_screen, ui_dialog, workflow_visual, presentation_visual, document_visual, unknown_manual_review
@@ -424,9 +476,17 @@ Return only valid JSON with this shape:
   "validation_rules": ["required fields, disabled states, constraints, inferred rules"],
   "implementation_notes": ["concrete build notes useful to a developer"],
   "accessibility_notes": ["labels, focus, contrast, keyboard, modal behavior"],
+  "reviewer_guidance": {{
+    "provided": true,
+    "notes": "human reviewer notes exactly as supplied",
+    "strength": "strong_focus_guidance_not_full_override",
+    "application": "how the guidance changed or focused the interpretation",
+    "visual_support": "what in the image supports, partially supports, or conflicts with the guidance",
+    "conflicts": ["model/image interpretation conflicts to keep explicit"]
+  }},
   "ambiguities": ["things the screenshot does not prove"],
   "requested_additions": ["potential functional additions implied by the artifact"],
-  "markdown_output": "A concise Markdown brief with Source, Visual summary, Visible text, UI elements, Behavior, Implementation notes, Ambiguities, and Requested additions sections."
+  "markdown_output": "A concise Markdown brief with Source, Reviewer guidance when provided, Visual summary, Visible text, UI elements, Behavior, Implementation notes, Ambiguities, and Requested additions sections."
 }}
 
 Choose interpretation emphasis by subtype:
