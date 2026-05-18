@@ -16,3 +16,4 @@
 - Added Bulk LLM export mode with explicit per-artifact boundaries and Markdown download support for approved artifacts.
 - Added export content and file-format controls for generated packages, including Markdown, JSON, combined, `.md`, `.txt`, and `.json` output.
 - Routed reviewer guidance notes into artifact regeneration, output packages, and bulk exports for clearer human-directed interpretation.
+- Fixed artifact regeneration so unsaved reviewer guidance notes are sent with the request and preserved as notes instead of being replaced by regeneration status text.

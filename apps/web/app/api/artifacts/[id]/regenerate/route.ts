@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { regenerateArtifactImage } from "@/lib/parser";
 import { getArtifactDetail, replaceArtifactExtraction } from "@/lib/store";
 
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const detail = await getArtifactDetail(id);
   if (!detail) {
@@ -11,8 +11,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
 
   try {
+    const payload = await request.json().catch(() => ({}));
+    const submittedNotes = typeof payload.reviewer_notes === "string" ? payload.reviewer_notes : "";
     const latestReview = detail.reviews[0];
-    const reviewerNotes = latestReview?.notes?.trim() ?? "";
+    const reviewerNotes = (submittedNotes || cleanReviewerNotes(latestReview?.notes ?? "")).trim();
     const imageBuffer = await fs.readFile(detail.artifact.image_path);
     const regenerated = await regenerateArtifactImage({
       image: new Blob([imageBuffer], { type: contentType(detail.artifact.image_path) }),
@@ -41,7 +43,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       ui_elements_json: artifact.ui_elements,
       markdown_output: artifact.markdown_output,
       json_output: artifact.json_output,
-      notes: reviewerNotes ? `${reviewerNotes}\n\nRegenerated from source image using the reviewer notes above.` : "Regenerated from source image."
+      notes: reviewerNotes
     });
     return NextResponse.json({ artifact, warnings: regenerated.warnings });
   } catch (error) {
@@ -57,4 +59,11 @@ function contentType(filename: string): string {
     return "image/webp";
   }
   return "image/png";
+}
+
+function cleanReviewerNotes(value: string) {
+  return value
+    .replace(/\n*Regenerated from source image using the reviewer notes above\.\s*$/g, "")
+    .replace(/^Regenerated from source image\.\s*$/g, "")
+    .trim();
 }

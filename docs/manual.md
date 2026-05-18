@@ -58,7 +58,7 @@ Windows:
 8. Save draft, approve, or reject.
 9. Return to the project and generate an output package from approved artifacts.
 
-Reviewer guidance notes are passed into regeneration and output generation. Use them to point the engine at the important region, intent, or ambiguity in abstract screenshots; the generated output should reconcile notes with the visible image rather than treating notes as standalone evidence.
+Reviewer guidance notes are passed into regeneration and output generation. You can type notes and immediately use Regenerate; saving the draft first is not required. Use them to point the engine at the important region, intent, or ambiguity in abstract screenshots; the generated output should reconcile notes with the visible image rather than treating notes as standalone evidence.
 
 ## Authentication
 

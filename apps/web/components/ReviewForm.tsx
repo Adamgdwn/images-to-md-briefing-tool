@@ -300,7 +300,11 @@ export function ReviewForm({
             type="button"
             onClick={async () => {
               setStatus("Regenerating from image...");
-              const response = await fetch(`/api/artifacts/${artifact.id}/regenerate`, { method: "POST" });
+              const response = await fetch(`/api/artifacts/${artifact.id}/regenerate`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ reviewer_notes: notes })
+              });
               const result = await response.json().catch(() => ({}));
               if (!response.ok) {
                 setStatus(result.error || "Regeneration failed. Check parser logs.");

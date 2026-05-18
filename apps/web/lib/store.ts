@@ -303,7 +303,7 @@ export async function replaceArtifactExtraction(input: {
     review_status: "draft",
     edited_markdown: extraction.markdown_output,
     edited_json: extraction.json_output,
-    notes: input.notes ?? "Regenerated from source image.",
+    notes: input.notes ?? "",
     approved_at: null,
     version: currentVersion + 1,
     created_at: now
