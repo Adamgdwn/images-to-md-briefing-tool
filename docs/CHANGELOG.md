@@ -14,3 +14,4 @@
 - Added provider settings and Claude Code account mode so local users can connect with their Claude account instead of an API key.
 - Hardened desktop launchers with app-specific health checks, nvm-aware startup, safer PID handling, and quoted environment/launcher paths.
 - Added Bulk LLM export mode with explicit per-artifact boundaries and Markdown download support for approved artifacts.
+- Added export content and file-format controls for generated packages, including Markdown, JSON, combined, `.md`, `.txt`, and `.json` output.

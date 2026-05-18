@@ -59,6 +59,8 @@ export type PackageType =
   | "implementation_brief"
   | "codex_ready_package"
   | "bulk_llm_export";
+export type ExportContent = "markdown" | "json" | "both";
+export type ExportFormat = "md" | "txt" | "json";
 
 export type Project = {
   id: string;

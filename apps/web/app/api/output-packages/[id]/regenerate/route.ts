@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { buildBulkLlmExport } from "@/lib/outputExport";
+import { buildBulkLlmExport, formatTextExport, normalizeTextExportOptions, outputExtension } from "@/lib/outputExport";
 import { exportsDir } from "@/lib/paths";
 import { generatePackageWithParser } from "@/lib/parser";
 import { getOutputPackage, getProjectBundle, updateOutputPackage } from "@/lib/store";
@@ -25,7 +25,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Original package selection has no approved artifacts." }, { status: 400 });
   }
 
-  const generated =
+  const generatedBase =
     outputPackage.package_type === "bulk_llm_export"
       ? buildBulkLlmExport(bundle, artifacts)
       : await generatePackageWithParser({
@@ -42,7 +42,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           }))
         });
 
-  const filename = `${outputPackage.package_type}-${Date.now()}-regenerated.md`;
+  const generated = formatTextExport(generatedBase, normalizeTextExportOptions(outputPackage.output_json.export_options));
+  const filename = `${outputPackage.package_type}-${Date.now()}-regenerated.${outputExtension(generated.output_json)}`;
   const exportPath = path.join(exportsDir(), filename);
   await fs.writeFile(exportPath, generated.output_markdown);
   const updated = await updateOutputPackage({

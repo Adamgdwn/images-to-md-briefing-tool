@@ -1,6 +1,20 @@
-import type { ProjectBundle } from "@/types/domain";
+import type { ExportContent, ExportFormat, ProjectBundle } from "@/types/domain";
 
 type BundleArtifact = ProjectBundle["artifacts"][number];
+type GeneratedOutput = {
+  output_markdown: string;
+  output_json: Record<string, unknown>;
+};
+
+export type TextExportOptions = {
+  content: ExportContent;
+  format: ExportFormat;
+};
+
+export const defaultTextExportOptions: TextExportOptions = {
+  content: "markdown",
+  format: "md"
+};
 
 export function buildBulkLlmExport(bundle: ProjectBundle, artifacts: BundleArtifact[]) {
   const sourceById = new Map(bundle.source_documents.map((source) => [source.id, source]));
@@ -87,10 +101,70 @@ export function buildBulkLlmExport(bundle: ProjectBundle, artifacts: BundleArtif
   };
 }
 
+export function formatTextExport(generated: GeneratedOutput, options: TextExportOptions): GeneratedOutput {
+  const normalized = normalizeTextExportOptions(options);
+  const jsonText = JSON.stringify(generated.output_json, null, 2);
+  let outputText = generated.output_markdown;
+
+  if (normalized.format === "json") {
+    outputText =
+      JSON.stringify(
+        {
+          export_content: normalized.content,
+          markdown_output: normalized.content === "json" ? undefined : generated.output_markdown,
+          json_output: normalized.content === "markdown" ? undefined : generated.output_json
+        },
+        null,
+        2
+      ) + "\n";
+  } else if (normalized.content === "json") {
+    outputText = `${jsonText}\n`;
+  } else if (normalized.content === "both" && normalized.format === "md") {
+    outputText = `${generated.output_markdown.trim()}\n\n---\n\n## JSON Payload\n\n\`\`\`json\n${jsonText}\n\`\`\`\n`;
+  } else if (normalized.content === "both") {
+    outputText = `${generated.output_markdown.trim()}\n\n--- JSON PAYLOAD ---\n\n${jsonText}\n`;
+  }
+
+  return {
+    output_markdown: outputText,
+    output_json: {
+      ...generated.output_json,
+      export_options: normalized,
+      source_markdown_output: generated.output_markdown,
+      source_json_output: generated.output_json
+    }
+  };
+}
+
+export function normalizeTextExportOptions(value: unknown): TextExportOptions {
+  const candidate = isRecord(value) ? value : {};
+  const content = candidate.content === "json" || candidate.content === "both" || candidate.content === "markdown" ? candidate.content : "markdown";
+  const format = candidate.format === "txt" || candidate.format === "json" || candidate.format === "md" ? candidate.format : "md";
+  return { content, format };
+}
+
+export function outputExtension(outputJson: Record<string, unknown>) {
+  return normalizeTextExportOptions(outputJson.export_options).format;
+}
+
+export function outputContentType(format: ExportFormat) {
+  if (format === "json") {
+    return "application/json; charset=utf-8";
+  }
+  if (format === "md") {
+    return "text/markdown; charset=utf-8";
+  }
+  return "text/plain; charset=utf-8";
+}
+
 function artifactLabel(index: number) {
   return String(index + 1).padStart(3, "0");
 }
 
 function metadataLines(metadata: Record<string, unknown>) {
   return Object.entries(metadata).map(([key, value]) => `- ${key}: ${value ?? "n/a"}`);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

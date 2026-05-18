@@ -2,17 +2,21 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { buildBulkLlmExport } from "@/lib/outputExport";
+import { buildBulkLlmExport, formatTextExport, outputExtension } from "@/lib/outputExport";
 import { exportsDir } from "@/lib/paths";
 import { generatePackageWithParser } from "@/lib/parser";
 import { createOutputPackage, getProjectBundle } from "@/lib/store";
 
 const packageTypes = ["functional_additions", "developer_stories", "implementation_brief", "codex_ready_package", "bulk_llm_export"] as const;
+const exportContents = ["markdown", "json", "both"] as const;
+const exportFormats = ["md", "txt", "json"] as const;
 
 const packageSchema = z.object({
   project_id: z.string().min(1),
   package_type: z.enum(packageTypes),
-  artifact_ids: z.array(z.string()).min(1)
+  artifact_ids: z.array(z.string()).min(1),
+  export_content: z.enum(exportContents).default("markdown"),
+  export_format: z.enum(exportFormats).default("md")
 });
 
 export async function POST(request: Request) {
@@ -32,7 +36,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Select at least one approved artifact." }, { status: 400 });
   }
 
-  const generated =
+  const generatedBase =
     parsed.data.package_type === "bulk_llm_export"
       ? buildBulkLlmExport(bundle, artifacts)
       : await generatePackageWithParser({
@@ -45,7 +49,12 @@ export async function POST(request: Request) {
             edited_json: artifact.latest_review?.edited_json
           }))
         });
-  const filename = `${parsed.data.package_type}-${Date.now()}.md`;
+
+  const generated = formatTextExport(generatedBase, {
+    content: parsed.data.export_content,
+    format: parsed.data.export_format
+  });
+  const filename = `${parsed.data.package_type}-${Date.now()}.${outputExtension(generated.output_json)}`;
   const exportPath = path.join(exportsDir(), filename);
   await fs.writeFile(exportPath, generated.output_markdown);
   const outputPackage = await createOutputPackage({

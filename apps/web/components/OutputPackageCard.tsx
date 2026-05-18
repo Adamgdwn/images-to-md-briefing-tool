@@ -36,7 +36,7 @@ export function OutputPackageCard({ item }: { item: OutputPackage }) {
         <a
           href={`/api/output-packages/${item.id}/download`}
           className="inline-flex h-9 items-center gap-2 border border-line bg-white px-3 text-sm font-medium"
-          title="Download Markdown export"
+          title="Download export"
         >
           <Download size={16} />
           Download

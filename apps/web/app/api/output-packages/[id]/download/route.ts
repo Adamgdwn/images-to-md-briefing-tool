@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { outputContentType, outputExtension } from "@/lib/outputExport";
 import { getOutputPackage } from "@/lib/store";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -8,10 +9,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Output package not found." }, { status: 404 });
   }
 
-  const filename = `${safeName(outputPackage.package_type)}-${outputPackage.id.slice(0, 8)}.md`;
+  const extension = outputExtension(outputPackage.output_json);
+  const filename = `${safeName(outputPackage.package_type)}-${outputPackage.id.slice(0, 8)}.${extension}`;
   return new NextResponse(outputPackage.output_markdown, {
     headers: {
-      "content-type": "text/markdown; charset=utf-8",
+      "content-type": outputContentType(extension),
       "content-disposition": `attachment; filename="${filename}"`
     }
   });
