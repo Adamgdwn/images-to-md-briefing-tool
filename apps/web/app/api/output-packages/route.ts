@@ -2,13 +2,16 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { buildBulkLlmExport } from "@/lib/outputExport";
 import { exportsDir } from "@/lib/paths";
 import { generatePackageWithParser } from "@/lib/parser";
 import { createOutputPackage, getProjectBundle } from "@/lib/store";
 
+const packageTypes = ["functional_additions", "developer_stories", "implementation_brief", "codex_ready_package", "bulk_llm_export"] as const;
+
 const packageSchema = z.object({
   project_id: z.string().min(1),
-  package_type: z.enum(["functional_additions", "developer_stories", "implementation_brief", "codex_ready_package"]),
+  package_type: z.enum(packageTypes),
   artifact_ids: z.array(z.string()).min(1)
 });
 
@@ -29,16 +32,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Select at least one approved artifact." }, { status: 400 });
   }
 
-  const generated = await generatePackageWithParser({
-    package_type: parsed.data.package_type,
-    artifacts: artifacts.map((artifact) => ({
-      id: artifact.id,
-      markdown_output: artifact.extraction?.markdown_output,
-      json_output: artifact.extraction?.json_output,
-      edited_markdown: artifact.latest_review?.edited_markdown,
-      edited_json: artifact.latest_review?.edited_json
-    }))
-  });
+  const generated =
+    parsed.data.package_type === "bulk_llm_export"
+      ? buildBulkLlmExport(bundle, artifacts)
+      : await generatePackageWithParser({
+          package_type: parsed.data.package_type,
+          artifacts: artifacts.map((artifact) => ({
+            id: artifact.id,
+            markdown_output: artifact.extraction?.markdown_output,
+            json_output: artifact.extraction?.json_output,
+            edited_markdown: artifact.latest_review?.edited_markdown,
+            edited_json: artifact.latest_review?.edited_json
+          }))
+        });
   const filename = `${parsed.data.package_type}-${Date.now()}.md`;
   const exportPath = path.join(exportsDir(), filename);
   await fs.writeFile(exportPath, generated.output_markdown);

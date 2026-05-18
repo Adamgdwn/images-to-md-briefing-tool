@@ -6,6 +6,7 @@ import { FileDown } from "lucide-react";
 import type { PackageType, ProjectBundle } from "@/types/domain";
 
 const packageTypes: Array<{ value: PackageType; label: string }> = [
+  { value: "bulk_llm_export", label: "Bulk LLM export" },
   { value: "functional_additions", label: "Functional additions" },
   { value: "developer_stories", label: "Developer stories" },
   { value: "implementation_brief", label: "Implementation brief" },
@@ -16,7 +17,7 @@ export function OutputGenerator({ bundle }: { bundle: ProjectBundle }) {
   const router = useRouter();
   const approved = bundle.artifacts.filter((artifact) => artifact.latest_review?.review_status === "approved");
   const drafts = bundle.artifacts.filter((artifact) => artifact.latest_review?.review_status !== "approved");
-  const [packageType, setPackageType] = useState<PackageType>("implementation_brief");
+  const [packageType, setPackageType] = useState<PackageType>("bulk_llm_export");
   const [selected, setSelected] = useState<string[]>(approved.map((artifact) => artifact.id));
   const [status, setStatus] = useState("");
   const canGenerate = approved.length > 0 && selected.length > 0;
@@ -37,7 +38,7 @@ export function OutputGenerator({ bundle }: { bundle: ProjectBundle }) {
       setStatus("Package could not be generated. Select approved artifacts.");
       return;
     }
-    setStatus("Package generated.");
+    setStatus(packageType === "bulk_llm_export" ? "Bulk export generated." : "Package generated.");
     router.refresh();
   }
 
@@ -64,6 +65,11 @@ export function OutputGenerator({ bundle }: { bundle: ProjectBundle }) {
           Generate
         </button>
       </div>
+      {packageType === "bulk_llm_export" ? (
+        <p className="text-sm text-slate-600">
+          Exports selected approved artifacts as separate sections with explicit boundaries and source metadata.
+        </p>
+      ) : null}
       <div className="grid gap-2">
         {approved.length === 0 ? (
           <div className="grid gap-2 text-sm text-slate-600">

@@ -2,8 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import type { OutputPackage } from "@/types/domain";
+
+const packageLabels: Record<OutputPackage["package_type"], string> = {
+  functional_additions: "Functional additions",
+  developer_stories: "Developer stories",
+  implementation_brief: "Implementation brief",
+  codex_ready_package: "Codex-ready package",
+  bulk_llm_export: "Bulk LLM export"
+};
 
 export function OutputPackageCard({ item }: { item: OutputPackage }) {
   const router = useRouter();
@@ -23,8 +31,16 @@ export function OutputPackageCard({ item }: { item: OutputPackage }) {
 
   return (
     <details className="p-4">
-      <summary className="cursor-pointer text-sm font-medium">{item.package_type}</summary>
+      <summary className="cursor-pointer text-sm font-medium">{packageLabels[item.package_type]}</summary>
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        <a
+          href={`/api/output-packages/${item.id}/download`}
+          className="inline-flex h-9 items-center gap-2 border border-line bg-white px-3 text-sm font-medium"
+          title="Download Markdown export"
+        >
+          <Download size={16} />
+          Download
+        </a>
         <button
           type="button"
           onClick={regenerate}

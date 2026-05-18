@@ -12,19 +12,21 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className="min-h-screen">
-        <header className="border-b border-line bg-white">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-            <Link href="/" className="text-base font-semibold tracking-normal">
-              Screenshot Briefing Tool
-            </Link>
-            <nav className="flex items-center gap-4 text-sm text-slate-600">
-              <Link href="/login">Sign In</Link>
-              <Link href="/provider">Provider</Link>
-              <Link href="/projects">Projects</Link>
-            </nav>
-          </div>
-        </header>
-        <AppNav />
+        <div className="sticky top-0 z-50 shadow-sm">
+          <header className="border-b border-line bg-white">
+            <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+              <Link href="/" className="text-base font-semibold tracking-normal">
+                Screenshot Briefing Tool
+              </Link>
+              <nav className="flex items-center gap-4 text-sm text-slate-600">
+                <Link href="/login">Sign In</Link>
+                <Link href="/provider">Provider</Link>
+                <Link href="/projects">Projects</Link>
+              </nav>
+            </div>
+          </header>
+          <AppNav />
+        </div>
         {children}
       </body>
     </html>

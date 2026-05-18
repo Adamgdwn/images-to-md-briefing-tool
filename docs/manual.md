@@ -64,10 +64,13 @@ When Supabase environment variables are configured, use `/login` for email/passw
 
 ## Output Modes
 
+- Bulk LLM export
 - Functional additions
 - Developer stories
 - Implementation brief
 - Codex-ready package
+
+Use Bulk LLM export when you want to pass many approved screenshots from one source document to another LLM without blending them together. It exports a manifest plus one bounded section per artifact, using explicit `BEGIN_ARTIFACT` and `END_ARTIFACT` markers around each reviewed Markdown/JSON payload.
 
 ## OCR Notes
 

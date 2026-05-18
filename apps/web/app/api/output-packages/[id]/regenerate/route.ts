@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { buildBulkLlmExport } from "@/lib/outputExport";
 import { exportsDir } from "@/lib/paths";
 import { generatePackageWithParser } from "@/lib/parser";
 import { getOutputPackage, getProjectBundle, updateOutputPackage } from "@/lib/store";
@@ -24,19 +25,22 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Original package selection has no approved artifacts." }, { status: 400 });
   }
 
-  const generated = await generatePackageWithParser({
-    package_type: outputPackage.package_type,
-    artifacts: artifacts.map((artifact) => ({
-      id: artifact.id,
-      category: artifact.category,
-      subtype: artifact.subtype,
-      classification_reasons: artifact.classification_reasons,
-      markdown_output: artifact.extraction?.markdown_output,
-      json_output: artifact.extraction?.json_output,
-      edited_markdown: artifact.latest_review?.edited_markdown,
-      edited_json: artifact.latest_review?.edited_json
-    }))
-  });
+  const generated =
+    outputPackage.package_type === "bulk_llm_export"
+      ? buildBulkLlmExport(bundle, artifacts)
+      : await generatePackageWithParser({
+          package_type: outputPackage.package_type,
+          artifacts: artifacts.map((artifact) => ({
+            id: artifact.id,
+            category: artifact.category,
+            subtype: artifact.subtype,
+            classification_reasons: artifact.classification_reasons,
+            markdown_output: artifact.extraction?.markdown_output,
+            json_output: artifact.extraction?.json_output,
+            edited_markdown: artifact.latest_review?.edited_markdown,
+            edited_json: artifact.latest_review?.edited_json
+          }))
+        });
 
   const filename = `${outputPackage.package_type}-${Date.now()}-regenerated.md`;
   const exportPath = path.join(exportsDir(), filename);

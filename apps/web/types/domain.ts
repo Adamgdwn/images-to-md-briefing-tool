@@ -57,7 +57,8 @@ export type PackageType =
   | "functional_additions"
   | "developer_stories"
   | "implementation_brief"
-  | "codex_ready_package";
+  | "codex_ready_package"
+  | "bulk_llm_export";
 
 export type Project = {
   id: string;
