@@ -11,12 +11,24 @@ export type TextExportOptions = {
   format: ExportFormat;
 };
 
+export type ExportTimestamp = {
+  iso: string;
+  display: string;
+  filename: string;
+};
+
 export const defaultTextExportOptions: TextExportOptions = {
   content: "markdown",
   format: "md"
 };
 
-export function buildBulkLlmExport(bundle: ProjectBundle, artifacts: BundleArtifact[]) {
+export function buildBulkLlmExport(
+  bundle: ProjectBundle,
+  artifacts: BundleArtifact[],
+  generatedAt = exportTimestamp(),
+  content: ExportContent = "markdown"
+) {
+  const includeReviewedJson = content !== "markdown";
   const sourceById = new Map(bundle.source_documents.map((source) => [source.id, source]));
   const sections = [
     `# Bulk LLM Export - ${bundle.project.name}`,
@@ -31,6 +43,9 @@ export function buildBulkLlmExport(bundle: ProjectBundle, artifacts: BundleArtif
     "",
     `- Project: ${bundle.project.name}`,
     `- Project ID: ${bundle.project.id}`,
+    `- Export generated: ${generatedAt.display}`,
+    `- Export generated ISO: ${generatedAt.iso}`,
+    `- Export content: ${content}`,
     `- Approved artifact count: ${artifacts.length}`,
     "- Boundary format: `BEGIN_ARTIFACT` / `END_ARTIFACT` HTML comments",
     "",
@@ -80,19 +95,21 @@ export function buildBulkLlmExport(bundle: ProjectBundle, artifacts: BundleArtif
       "",
       reviewedMarkdown.trim() || "_No reviewed Markdown recorded._",
       "",
-      "<!-- END_REVIEWED_MARKDOWN -->",
-      "",
-      "<!-- BEGIN_REVIEWED_JSON -->",
-      "",
-      "```json",
-      JSON.stringify(reviewedJson, null, 2),
-      "```",
-      "",
-      "<!-- END_REVIEWED_JSON -->",
-      "",
-      `<!-- END_ARTIFACT ${label} id=${artifact.id} -->`,
-      ""
+      "<!-- END_REVIEWED_MARKDOWN -->"
     );
+    if (includeReviewedJson) {
+      sections.push(
+        "",
+        "<!-- BEGIN_REVIEWED_JSON -->",
+        "",
+        "```json",
+        JSON.stringify(reviewedJson, null, 2),
+        "```",
+        "",
+        "<!-- END_REVIEWED_JSON -->"
+      );
+    }
+    sections.push("", `<!-- END_ARTIFACT ${label} id=${artifact.id} -->`, "");
     artifactJson.push({ metadata, reviewer_notes: reviewerNotes, reviewed_markdown: reviewedMarkdown, reviewed_json: reviewedJson });
   }
 
@@ -101,24 +118,34 @@ export function buildBulkLlmExport(bundle: ProjectBundle, artifacts: BundleArtif
     output_json: {
       package_type: "bulk_llm_export",
       project_id: bundle.project.id,
+      export_generated_at: generatedAt.iso,
+      export_generated_at_display: generatedAt.display,
       artifact_count: artifacts.length,
       artifacts: artifactJson
     }
   };
 }
 
-export function formatTextExport(generated: GeneratedOutput, options: TextExportOptions): GeneratedOutput {
+export function formatTextExport(generated: GeneratedOutput, options: TextExportOptions, generatedAt = exportTimestamp()): GeneratedOutput {
   const normalized = normalizeTextExportOptions(options);
-  const jsonText = JSON.stringify(generated.output_json, null, 2);
-  let outputText = generated.output_markdown;
+  const outputJson = {
+    ...generated.output_json,
+    export_generated_at: generatedAt.iso,
+    export_generated_at_display: generatedAt.display
+  };
+  const markdownWithStamp = prependExportTimestamp(generated.output_markdown, generatedAt);
+  const jsonText = JSON.stringify(outputJson, null, 2);
+  let outputText = markdownWithStamp;
 
   if (normalized.format === "json") {
     outputText =
       JSON.stringify(
         {
           export_content: normalized.content,
-          markdown_output: normalized.content === "json" ? undefined : generated.output_markdown,
-          json_output: normalized.content === "markdown" ? undefined : generated.output_json
+          export_generated_at: generatedAt.iso,
+          export_generated_at_display: generatedAt.display,
+          markdown_output: normalized.content === "json" ? undefined : markdownWithStamp,
+          json_output: normalized.content === "markdown" ? undefined : outputJson
         },
         null,
         2
@@ -126,18 +153,18 @@ export function formatTextExport(generated: GeneratedOutput, options: TextExport
   } else if (normalized.content === "json") {
     outputText = `${jsonText}\n`;
   } else if (normalized.content === "both" && normalized.format === "md") {
-    outputText = `${generated.output_markdown.trim()}\n\n---\n\n## JSON Payload\n\n\`\`\`json\n${jsonText}\n\`\`\`\n`;
+    outputText = `${markdownWithStamp.trim()}\n\n---\n\n## JSON Payload\n\n\`\`\`json\n${jsonText}\n\`\`\`\n`;
   } else if (normalized.content === "both") {
-    outputText = `${generated.output_markdown.trim()}\n\n--- JSON PAYLOAD ---\n\n${jsonText}\n`;
+    outputText = `${markdownWithStamp.trim()}\n\n--- JSON PAYLOAD ---\n\n${jsonText}\n`;
   }
 
   return {
     output_markdown: outputText,
     output_json: {
-      ...generated.output_json,
+      ...outputJson,
       export_options: normalized,
-      source_markdown_output: generated.output_markdown,
-      source_json_output: generated.output_json
+      source_markdown_output: markdownWithStamp,
+      source_json_output: outputJson
     }
   };
 }
@@ -163,12 +190,52 @@ export function outputContentType(format: ExportFormat) {
   return "text/plain; charset=utf-8";
 }
 
+export function exportTimestamp(date = new Date()): ExportTimestamp {
+  const parts = {
+    year: date.getFullYear(),
+    month: pad(date.getMonth() + 1),
+    day: pad(date.getDate()),
+    hour: pad(date.getHours()),
+    minute: pad(date.getMinutes()),
+    second: pad(date.getSeconds())
+  };
+  return {
+    iso: date.toISOString(),
+    display: `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`,
+    filename: `${parts.year}-${parts.month}-${parts.day}_${parts.hour}-${parts.minute}-${parts.second}`
+  };
+}
+
+export function filenameTimestampFromOutput(outputJson: Record<string, unknown>) {
+  const value = typeof outputJson.export_generated_at === "string" ? outputJson.export_generated_at : null;
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return exportTimestamp(date).filename;
+}
+
 function artifactLabel(index: number) {
   return String(index + 1).padStart(3, "0");
 }
 
 function metadataLines(metadata: Record<string, unknown>) {
   return Object.entries(metadata).map(([key, value]) => `- ${key}: ${value ?? "n/a"}`);
+}
+
+function prependExportTimestamp(markdown: string, generatedAt: ExportTimestamp) {
+  const trimmed = markdown.trim();
+  if (trimmed.includes(`- Export generated ISO: ${generatedAt.iso}`)) {
+    return `${trimmed}\n`;
+  }
+  return `> Export generated: ${generatedAt.display} (${generatedAt.iso})\n\n${trimmed}\n`;
+}
+
+function pad(value: number) {
+  return String(value).padStart(2, "0");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

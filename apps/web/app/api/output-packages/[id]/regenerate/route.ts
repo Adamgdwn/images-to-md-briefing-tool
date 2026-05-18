@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { buildBulkLlmExport, formatTextExport, normalizeTextExportOptions, outputExtension } from "@/lib/outputExport";
+import { buildBulkLlmExport, exportTimestamp, formatTextExport, normalizeTextExportOptions, outputExtension } from "@/lib/outputExport";
 import { exportsDir } from "@/lib/paths";
 import { generatePackageWithParser } from "@/lib/parser";
 import { getOutputPackage, getProjectBundle, updateOutputPackage } from "@/lib/store";
@@ -25,9 +25,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Original package selection has no approved artifacts." }, { status: 400 });
   }
 
+  const generatedAt = exportTimestamp();
+  const exportOptions = normalizeTextExportOptions(outputPackage.output_json.export_options);
   const generatedBase =
     outputPackage.package_type === "bulk_llm_export"
-      ? buildBulkLlmExport(bundle, artifacts)
+      ? buildBulkLlmExport(bundle, artifacts, generatedAt, exportOptions.content)
       : await generatePackageWithParser({
           package_type: outputPackage.package_type,
           artifacts: artifacts.map((artifact) => ({
@@ -43,8 +45,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           }))
         });
 
-  const generated = formatTextExport(generatedBase, normalizeTextExportOptions(outputPackage.output_json.export_options));
-  const filename = `${outputPackage.package_type}-${Date.now()}-regenerated.${outputExtension(generated.output_json)}`;
+  const generated = formatTextExport(generatedBase, exportOptions, generatedAt);
+  const filename = `${outputPackage.package_type}-${generatedAt.filename}-regenerated.${outputExtension(generated.output_json)}`;
   const exportPath = path.join(exportsDir(), filename);
   await fs.writeFile(exportPath, generated.output_markdown);
   const updated = await updateOutputPackage({

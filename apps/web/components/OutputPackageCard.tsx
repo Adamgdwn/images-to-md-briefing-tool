@@ -16,6 +16,7 @@ const packageLabels: Record<OutputPackage["package_type"], string> = {
 export function OutputPackageCard({ item }: { item: OutputPackage }) {
   const router = useRouter();
   const [status, setStatus] = useState("");
+  const generatedAt = exportDisplayTime(item.output_json, item.created_at);
 
   async function regenerate() {
     setStatus("Regenerating...");
@@ -25,13 +26,15 @@ export function OutputPackageCard({ item }: { item: OutputPackage }) {
       setStatus(data.error || "Could not regenerate output.");
       return;
     }
-    setStatus("Regenerated.");
+    setStatus(`Regenerated at ${new Date().toLocaleString()}.`);
     router.refresh();
   }
 
   return (
     <details className="p-4">
-      <summary className="cursor-pointer text-sm font-medium">{packageLabels[item.package_type]}</summary>
+      <summary className="cursor-pointer text-sm font-medium">
+        {packageLabels[item.package_type]} · {generatedAt}
+      </summary>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <a
           href={`/api/output-packages/${item.id}/download`}
@@ -55,4 +58,11 @@ export function OutputPackageCard({ item }: { item: OutputPackage }) {
       <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap bg-slate-50 p-3 text-xs leading-5">{item.output_markdown}</pre>
     </details>
   );
+}
+
+function exportDisplayTime(outputJson: Record<string, unknown>, fallback: string) {
+  if (typeof outputJson.export_generated_at_display === "string") {
+    return outputJson.export_generated_at_display;
+  }
+  return new Date(fallback).toLocaleString();
 }

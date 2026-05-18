@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { outputContentType, outputExtension } from "@/lib/outputExport";
+import { filenameTimestampFromOutput, outputContentType, outputExtension } from "@/lib/outputExport";
 import { getOutputPackage } from "@/lib/store";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,7 +10,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   const extension = outputExtension(outputPackage.output_json);
-  const filename = `${safeName(outputPackage.package_type)}-${outputPackage.id.slice(0, 8)}.${extension}`;
+  const timestamp = filenameTimestampFromOutput(outputPackage.output_json) ?? outputPackage.created_at.replace(/[:.]/g, "-");
+  const filename = `${safeName(outputPackage.package_type)}-${timestamp}-${outputPackage.id.slice(0, 8)}.${extension}`;
   return new NextResponse(outputPackage.output_markdown, {
     headers: {
       "content-type": outputContentType(extension),

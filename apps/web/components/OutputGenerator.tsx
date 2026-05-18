@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { FileDown } from "lucide-react";
-import type { ExportContent, ExportFormat, PackageType, ProjectBundle } from "@/types/domain";
+import { CheckCircle, FileDown, LoaderCircle } from "lucide-react";
+import type { ExportContent, ExportFormat, OutputPackage, PackageType, ProjectBundle } from "@/types/domain";
 
 const packageTypes: Array<{ value: PackageType; label: string }> = [
   { value: "bulk_llm_export", label: "Bulk LLM export" },
@@ -34,32 +34,48 @@ export function OutputGenerator({ bundle }: { bundle: ProjectBundle }) {
   const [exportFormat, setExportFormat] = useState<ExportFormat>("md");
   const [selected, setSelected] = useState<string[]>(approved.map((artifact) => artifact.id));
   const [status, setStatus] = useState("");
-  const canGenerate = approved.length > 0 && selected.length > 0;
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [lastGenerated, setLastGenerated] = useState<OutputPackage | null>(null);
+  const canGenerate = approved.length > 0 && selected.length > 0 && !isGenerating;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (isGenerating) {
+      return;
+    }
     if (!canGenerate) {
       setStatus("Review and approve at least one artifact first.");
       return;
     }
+    setLastGenerated(null);
+    setIsGenerating(true);
     setStatus("Generating package...");
-    const response = await fetch("/api/output-packages", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        project_id: bundle.project.id,
-        package_type: packageType,
-        artifact_ids: selected,
-        export_content: exportContent,
-        export_format: exportFormat
-      })
-    });
-    if (!response.ok) {
-      setStatus("Package could not be generated. Select approved artifacts.");
-      return;
+    try {
+      const response = await fetch("/api/output-packages", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          project_id: bundle.project.id,
+          package_type: packageType,
+          artifact_ids: selected,
+          export_content: exportContent,
+          export_format: exportFormat
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setStatus("Package could not be generated. Select approved artifacts.");
+        return;
+      }
+      const outputPackage = result.output_package as OutputPackage;
+      setLastGenerated(outputPackage);
+      setStatus(`Generated at ${exportDisplayTime(outputPackage.output_json, outputPackage.created_at)}.`);
+      router.refresh();
+    } catch {
+      setStatus("Package could not be generated. Check the app logs and try again.");
+    } finally {
+      setIsGenerating(false);
     }
-    setStatus(packageType === "bulk_llm_export" ? "Bulk export generated." : "Package generated.");
-    router.refresh();
   }
 
   return (
@@ -103,10 +119,10 @@ export function OutputGenerator({ bundle }: { bundle: ProjectBundle }) {
         <button
           disabled={!canGenerate}
           className="inline-flex h-10 items-center justify-center gap-2 bg-pine px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
-          title={canGenerate ? "Generate output package" : "Approve an artifact first"}
+          title={canGenerate ? "Generate output package" : isGenerating ? "Generation in progress" : "Approve an artifact first"}
         >
-          <FileDown size={16} />
-          Generate
+          {isGenerating ? <LoaderCircle size={16} className="animate-spin" /> : <FileDown size={16} />}
+          {isGenerating ? "Generating..." : "Generate"}
         </button>
       </div>
       {packageType === "bulk_llm_export" ? (
@@ -141,7 +157,26 @@ export function OutputGenerator({ bundle }: { bundle: ProjectBundle }) {
           ))
         )}
       </div>
-      <span className="text-sm text-slate-600">{status}</span>
+      <div className="min-h-9" aria-live="polite">
+        {lastGenerated ? (
+          <div className="flex flex-wrap items-center gap-2 border border-pine bg-green-50 px-3 py-2 text-sm text-pine">
+            <CheckCircle size={16} />
+            <span>{status}</span>
+            <a href={`/api/output-packages/${lastGenerated.id}/download`} className="font-medium underline">
+              Download latest export
+            </a>
+          </div>
+        ) : (
+          <span className="text-sm text-slate-600">{status}</span>
+        )}
+      </div>
     </form>
   );
+}
+
+function exportDisplayTime(outputJson: Record<string, unknown>, fallback: string) {
+  if (typeof outputJson.export_generated_at_display === "string") {
+    return outputJson.export_generated_at_display;
+  }
+  return new Date(fallback).toLocaleString();
 }

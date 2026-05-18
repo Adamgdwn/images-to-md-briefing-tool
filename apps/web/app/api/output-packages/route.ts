@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { buildBulkLlmExport, formatTextExport, outputExtension } from "@/lib/outputExport";
+import { buildBulkLlmExport, exportTimestamp, formatTextExport, outputExtension } from "@/lib/outputExport";
 import { exportsDir } from "@/lib/paths";
 import { generatePackageWithParser } from "@/lib/parser";
 import { createOutputPackage, getProjectBundle } from "@/lib/store";
@@ -36,9 +36,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Select at least one approved artifact." }, { status: 400 });
   }
 
+  const generatedAt = exportTimestamp();
   const generatedBase =
     parsed.data.package_type === "bulk_llm_export"
-      ? buildBulkLlmExport(bundle, artifacts)
+      ? buildBulkLlmExport(bundle, artifacts, generatedAt, parsed.data.export_content)
       : await generatePackageWithParser({
           package_type: parsed.data.package_type,
           artifacts: artifacts.map((artifact) => ({
@@ -51,11 +52,15 @@ export async function POST(request: Request) {
           }))
         });
 
-  const generated = formatTextExport(generatedBase, {
-    content: parsed.data.export_content,
-    format: parsed.data.export_format
-  });
-  const filename = `${parsed.data.package_type}-${Date.now()}.${outputExtension(generated.output_json)}`;
+  const generated = formatTextExport(
+    generatedBase,
+    {
+      content: parsed.data.export_content,
+      format: parsed.data.export_format
+    },
+    generatedAt
+  );
+  const filename = `${parsed.data.package_type}-${generatedAt.filename}.${outputExtension(generated.output_json)}`;
   const exportPath = path.join(exportsDir(), filename);
   await fs.writeFile(exportPath, generated.output_markdown);
   const outputPackage = await createOutputPackage({
