@@ -64,6 +64,14 @@ The project list includes active/archived filters, last activity timestamps, and
 
 Reviewer guidance notes are passed into regeneration and output generation. You can type notes and immediately use Regenerate; saving the draft first is not required. Use them to point the engine at the important region, intent, or ambiguity in abstract screenshots; the generated output should reconcile notes with the visible image rather than treating notes as standalone evidence.
 
+## Backup and Import
+
+Use Export backup on a project detail page to download a full project backup JSON file. The backup includes project metadata, source documents, artifact images, extraction records, reviewer notes, reviews, and generated output packages.
+
+Use Import backup on the project list to restore a backup JSON file into the local store. Imports create a new project with fresh internal IDs, copy included files back into local storage, and add an imported timestamp to duplicate project names so existing projects are not overwritten.
+
+Keep project backup JSON files somewhere durable if you need to move work between machines or recover after deleting local app data.
+
 ## Authentication
 
 When Supabase environment variables are configured, use `/login` for email/password sign-in, sign-up, or magic-link delivery. Without those variables, the app runs in local laptop mode for end-to-end development.

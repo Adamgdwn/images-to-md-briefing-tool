@@ -20,3 +20,4 @@
 - Added product monetization roadmap, chunked implementation plan, and context handoff template for high-quality iterative development.
 - Added local project lifecycle controls for rename/context edits, archive/restore, and permanent deletion with related record/file cleanup.
 - Added project and artifact filters, last-activity timestamps, review-version metadata, and clearer workflow status messages.
+- Added full-project JSON backups and imports for moving or restoring projects with source files, artifact images, reviews, and exports.

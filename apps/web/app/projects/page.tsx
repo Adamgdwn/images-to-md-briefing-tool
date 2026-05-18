@@ -1,4 +1,5 @@
 import { ProjectCreateForm } from "@/components/ProjectCreateForm";
+import { ProjectImportForm } from "@/components/ProjectImportForm";
 import { ProjectList } from "@/components/ProjectList";
 import { listProjectSummaries } from "@/lib/store";
 
@@ -14,6 +15,7 @@ export default async function ProjectsPage() {
         </div>
       </div>
       <ProjectCreateForm />
+      <ProjectImportForm />
       <ProjectList projects={projects} />
     </main>
   );

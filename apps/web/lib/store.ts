@@ -17,6 +17,32 @@ import type {
 } from "@/types/domain";
 
 const SYSTEM_USER = "local-user";
+const PROJECT_BACKUP_SCHEMA = "images-to-md-briefing-tool-project-backup";
+const PROJECT_BACKUP_VERSION = 1;
+
+type BackupFilePayload = {
+  filename: string;
+  content_base64: string | null;
+  missing: boolean;
+};
+
+type BackupRecord<T> = {
+  record: T;
+  file: BackupFilePayload | null;
+};
+
+export type PortableProjectBundle = {
+  schema: typeof PROJECT_BACKUP_SCHEMA;
+  version: typeof PROJECT_BACKUP_VERSION;
+  exported_at: string;
+  project: Project;
+  source_documents: Array<BackupRecord<SourceDocument>>;
+  processing_jobs: ProcessingJob[];
+  artifacts: Array<BackupRecord<Artifact>>;
+  artifact_extractions: ArtifactExtraction[];
+  artifact_reviews: ArtifactReview[];
+  output_packages: Array<BackupRecord<OutputPackage>>;
+};
 
 const emptyStore = (): StoreData => ({
   projects: [],
@@ -219,6 +245,173 @@ export async function getProjectBundle(projectId: string): Promise<ProjectBundle
     artifacts,
     processing_jobs: data.processing_jobs.filter((item) => item.project_id === projectId),
     output_packages: data.output_packages.filter((item) => item.project_id === projectId)
+  };
+}
+
+export async function createProjectBackupBundle(projectId: string): Promise<PortableProjectBundle | null> {
+  const data = await readStore();
+  const project = data.projects.find((item) => item.id === projectId);
+  if (!project) {
+    return null;
+  }
+
+  const sourceDocuments = data.source_documents.filter((item) => item.project_id === projectId);
+  const artifacts = data.artifacts.filter((item) => item.project_id === projectId);
+  const artifactIds = new Set(artifacts.map((item) => item.id));
+  const outputPackages = data.output_packages.filter((item) => item.project_id === projectId);
+
+  return {
+    schema: PROJECT_BACKUP_SCHEMA,
+    version: PROJECT_BACKUP_VERSION,
+    exported_at: new Date().toISOString(),
+    project,
+    source_documents: await Promise.all(
+      sourceDocuments.map(async (record) => ({
+        record,
+        file: await readBackupFile(record.storage_path, record.filename)
+      }))
+    ),
+    processing_jobs: data.processing_jobs.filter((item) => item.project_id === projectId),
+    artifacts: await Promise.all(
+      artifacts.map(async (record) => ({
+        record,
+        file: await readBackupFile(record.image_path, path.basename(record.image_path))
+      }))
+    ),
+    artifact_extractions: data.artifact_extractions.filter((item) => artifactIds.has(item.artifact_id)),
+    artifact_reviews: data.artifact_reviews.filter((item) => artifactIds.has(item.artifact_id)),
+    output_packages: await Promise.all(
+      outputPackages.map(async (record) => ({
+        record,
+        file: record.storage_path ? await readBackupFile(record.storage_path, path.basename(record.storage_path)) : null
+      }))
+    )
+  };
+}
+
+export async function importProjectBackupBundle(bundle: unknown): Promise<{
+  project: Project;
+  imported_counts: Record<string, number>;
+}> {
+  const parsed = parseProjectBackupBundle(bundle);
+  const data = await readStore();
+  const now = new Date().toISOString();
+  const projectIdMap = new Map([[parsed.project.id, randomUUID()]]);
+  const sourceIdMap = new Map(parsed.source_documents.map((item) => [item.record.id, randomUUID()]));
+  const jobIdMap = new Map(parsed.processing_jobs.map((item) => [item.id, randomUUID()]));
+  const artifactIdMap = new Map(parsed.artifacts.map((item) => [item.record.id, randomUUID()]));
+  const extractionIdMap = new Map(parsed.artifact_extractions.map((item) => [item.id, randomUUID()]));
+  const reviewIdMap = new Map(parsed.artifact_reviews.map((item) => [item.id, randomUUID()]));
+  const outputIdMap = new Map(parsed.output_packages.map((item) => [item.record.id, randomUUID()]));
+  const idMap = new Map<string, string>([
+    ...projectIdMap,
+    ...sourceIdMap,
+    ...jobIdMap,
+    ...artifactIdMap,
+    ...extractionIdMap,
+    ...reviewIdMap,
+    ...outputIdMap
+  ]);
+  const newProjectId = projectIdMap.get(parsed.project.id) ?? randomUUID();
+  const project: Project = {
+    ...parsed.project,
+    id: newProjectId,
+    name: importedProjectName(parsed.project.name, data.projects.map((item) => item.name)),
+    created_by: SYSTEM_USER,
+    updated_at: now
+  };
+
+  const sourceDocuments = await Promise.all(
+    parsed.source_documents.map(async (item) => {
+      const id = sourceIdMap.get(item.record.id) ?? randomUUID();
+      const storagePath =
+        (await restoreBackupFile(item.file, uploadsDir(), `${id}-${safeFileName(item.record.filename)}`)) ??
+        (await writeMissingBackupMarker(uploadsDir(), `${id}-missing-${safeFileName(item.record.filename)}`));
+      return {
+        ...item.record,
+        id,
+        project_id: newProjectId,
+        storage_path: storagePath
+      };
+    })
+  );
+  const processingJobs = parsed.processing_jobs.map((item) => ({
+    ...item,
+    id: jobIdMap.get(item.id) ?? randomUUID(),
+    project_id: newProjectId,
+    source_document_id: item.source_document_id ? sourceIdMap.get(item.source_document_id) ?? null : null
+  }));
+  const artifacts = await Promise.all(
+    parsed.artifacts.map(async (item) => {
+      const id = artifactIdMap.get(item.record.id) ?? randomUUID();
+      const imagePath =
+        (await restoreBackupFile(item.file, artifactsDir(), `${id}-${safeFileName(path.basename(item.record.image_path))}`)) ??
+        (await writeMissingBackupMarker(artifactsDir(), `${id}-missing-${safeFileName(path.basename(item.record.image_path))}`));
+      return {
+        ...item.record,
+        id,
+        project_id: newProjectId,
+        source_document_id: item.record.source_document_id ? sourceIdMap.get(item.record.source_document_id) ?? null : null,
+        image_path: imagePath
+      };
+    })
+  );
+  const artifactExtractions = parsed.artifact_extractions.map((item) => ({
+    ...item,
+    id: extractionIdMap.get(item.id) ?? randomUUID(),
+    artifact_id: artifactIdMap.get(item.artifact_id) ?? item.artifact_id,
+    json_output: remapKnownIds(item.json_output, idMap) as Record<string, unknown>
+  }));
+  const artifactReviews = parsed.artifact_reviews.map((item) => ({
+    ...item,
+    id: reviewIdMap.get(item.id) ?? randomUUID(),
+    artifact_id: artifactIdMap.get(item.artifact_id) ?? item.artifact_id,
+    edited_json: remapKnownIds(item.edited_json, idMap) as Record<string, unknown>
+  }));
+  const outputPackages = await Promise.all(
+    parsed.output_packages.map(async (item) => {
+      const id = outputIdMap.get(item.record.id) ?? randomUUID();
+      const storagePath = item.record.storage_path
+        ? await restoreBackupFile(item.file, exportsDir(), `${id}-${safeFileName(path.basename(item.record.storage_path))}`)
+        : null;
+      return {
+        ...item.record,
+        id,
+        project_id: newProjectId,
+        source_selection: item.record.source_selection.map((sourceId) => idMap.get(sourceId) ?? sourceId),
+        output_json: remapKnownIds(item.record.output_json, idMap) as Record<string, unknown>,
+        storage_path: storagePath,
+        created_at: item.record.created_at
+      };
+    })
+  );
+
+  data.projects.push(project);
+  data.source_documents.push(...sourceDocuments);
+  data.processing_jobs.push(...processingJobs);
+  data.artifacts.push(...artifacts);
+  data.artifact_extractions.push(...artifactExtractions);
+  data.artifact_reviews.push(...artifactReviews);
+  data.output_packages.push(...outputPackages);
+  data.audit_events.push(
+    audit(project.id, "project_imported", "project", project.id, {
+      original_project_id: parsed.project.id,
+      original_project_name: parsed.project.name,
+      backup_exported_at: parsed.exported_at
+    })
+  );
+  await writeStore(data);
+
+  return {
+    project,
+    imported_counts: {
+      source_documents: sourceDocuments.length,
+      processing_jobs: processingJobs.length,
+      artifacts: artifacts.length,
+      artifact_extractions: artifactExtractions.length,
+      artifact_reviews: artifactReviews.length,
+      output_packages: outputPackages.length
+    }
   };
 }
 
@@ -617,6 +810,100 @@ async function unlinkManagedFile(filePath: string) {
   } catch {
     return false;
   }
+}
+
+async function readBackupFile(filePath: string, fallbackFilename: string): Promise<BackupFilePayload> {
+  const filename = safeFileName(path.basename(filePath) || fallbackFilename);
+  try {
+    const content = await fs.readFile(filePath);
+    return {
+      filename,
+      content_base64: content.toString("base64"),
+      missing: false
+    };
+  } catch {
+    return {
+      filename,
+      content_base64: null,
+      missing: true
+    };
+  }
+}
+
+async function restoreBackupFile(file: BackupFilePayload | null, directory: string, fallbackFilename: string): Promise<string | null> {
+  if (!file || file.missing || !file.content_base64) {
+    return null;
+  }
+  await fs.mkdir(directory, { recursive: true });
+  const filePath = path.join(directory, safeFileName(fallbackFilename || file.filename));
+  await fs.writeFile(filePath, Buffer.from(file.content_base64, "base64"));
+  return filePath;
+}
+
+async function writeMissingBackupMarker(directory: string, filename: string): Promise<string> {
+  await fs.mkdir(directory, { recursive: true });
+  const filePath = path.join(directory, `${safeFileName(filename)}.missing.txt`);
+  await fs.writeFile(filePath, "This placeholder was created because the project backup did not contain the original file.\n");
+  return filePath;
+}
+
+function parseProjectBackupBundle(value: unknown): PortableProjectBundle {
+  if (!isObject(value)) {
+    throw new Error("Backup must be a JSON object.");
+  }
+  if (value.schema !== PROJECT_BACKUP_SCHEMA || value.version !== PROJECT_BACKUP_VERSION) {
+    throw new Error("Unsupported project backup format.");
+  }
+  if (!isObject(value.project) || typeof value.project.id !== "string" || typeof value.project.name !== "string") {
+    throw new Error("Backup is missing project metadata.");
+  }
+  assertArray(value.source_documents, "source_documents");
+  assertArray(value.processing_jobs, "processing_jobs");
+  assertArray(value.artifacts, "artifacts");
+  assertArray(value.artifact_extractions, "artifact_extractions");
+  assertArray(value.artifact_reviews, "artifact_reviews");
+  assertArray(value.output_packages, "output_packages");
+  return value as PortableProjectBundle;
+}
+
+function importedProjectName(originalName: string, existingNames: string[]) {
+  const names = new Set(existingNames);
+  const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ").replace(/:/g, "-");
+  const base = `${originalName} (Imported ${timestamp})`;
+  let candidate = base;
+  let counter = 2;
+  while (names.has(candidate)) {
+    candidate = `${base} ${counter}`;
+    counter += 1;
+  }
+  return candidate;
+}
+
+function remapKnownIds(value: unknown, idMap: Map<string, string>): unknown {
+  if (typeof value === "string") {
+    return idMap.get(value) ?? value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => remapKnownIds(item, idMap));
+  }
+  if (isObject(value)) {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, remapKnownIds(item, idMap)]));
+  }
+  return value;
+}
+
+function assertArray(value: unknown, name: string): asserts value is unknown[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Backup is missing ${name}.`);
+  }
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function safeFileName(value: string) {
+  return (value || "file").replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-");
 }
 
 function audit(projectId: string, eventType: string, subjectType: string, subjectId: string, metadata: Record<string, unknown> = {}) {

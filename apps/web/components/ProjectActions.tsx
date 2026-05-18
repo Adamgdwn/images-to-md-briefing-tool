@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, Save, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Download, Save, Trash2 } from "lucide-react";
 import type { Project } from "@/types/domain";
 
 export function ProjectActions({ project }: { project: Project }) {
@@ -135,6 +135,14 @@ export function ProjectActions({ project }: { project: Project }) {
             {isArchived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
             {isArchived ? "Restore" : "Archive"}
           </button>
+          <a
+            href={`/api/projects/${project.id}/bundle`}
+            className="inline-flex h-9 items-center gap-2 border border-line bg-white px-3 text-sm font-medium"
+            title="Export project backup"
+          >
+            <Download size={16} />
+            Export backup
+          </a>
         </div>
       </form>
       <div className="mt-4 border-t border-line pt-4">
