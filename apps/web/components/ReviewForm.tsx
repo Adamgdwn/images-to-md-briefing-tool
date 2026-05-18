@@ -85,7 +85,7 @@ export function ReviewForm({
   }, [confidence]);
 
   async function submit(reviewStatus: "draft" | "approved" | "rejected") {
-    setStatus("");
+    setStatus(reviewStatus === "approved" ? "Approving..." : reviewStatus === "rejected" ? "Rejecting..." : "Saving draft...");
     if (readOnly) {
       setStatus("Archived project artifacts cannot be changed.");
       return;
@@ -127,11 +127,18 @@ export function ReviewForm({
         classification_reasons: classificationReasonsList
       })
     });
+    const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setStatus("Review could not be saved.");
+      setStatus(result.error || "Review could not be saved.");
       return;
     }
-    setStatus(reviewStatus === "approved" ? "Approved." : reviewStatus === "rejected" ? "Rejected." : "Draft saved.");
+    setStatus(
+      reviewStatus === "approved"
+        ? `Approved as v${result.review?.version ?? ""}.`
+        : reviewStatus === "rejected"
+          ? `Rejected as v${result.review?.version ?? ""}.`
+          : `Draft saved as v${result.review?.version ?? ""}.`
+    );
     router.refresh();
   }
 

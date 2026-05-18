@@ -11,6 +11,7 @@ import type {
   ProcessingJob,
   Project,
   ProjectBundle,
+  ProjectSummary,
   SourceDocument,
   StoreData
 } from "@/types/domain";
@@ -56,6 +57,30 @@ export async function writeStore(data: StoreData) {
 export async function listProjects(): Promise<Project[]> {
   const data = await readStore();
   return data.projects.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+}
+
+export async function listProjectSummaries(): Promise<ProjectSummary[]> {
+  const data = await readStore();
+  return data.projects
+    .map((project) => {
+      const projectArtifacts = data.artifacts.filter((artifact) => artifact.project_id === project.id);
+      const projectArtifactIds = new Set(projectArtifacts.map((artifact) => artifact.id));
+      const latestReviews = projectArtifacts.map((artifact) => latestReview(data, artifact.id));
+      return {
+        ...project,
+        source_count: data.source_documents.filter((source) => source.project_id === project.id).length,
+        artifact_count: projectArtifacts.length,
+        approved_count: latestReviews.filter((review) => review?.review_status === "approved").length,
+        output_package_count: data.output_packages.filter((outputPackage) => outputPackage.project_id === project.id).length,
+        updated_at: mostRecentDate([
+          project.updated_at,
+          ...projectArtifacts.map((artifact) => artifact.updated_at),
+          ...data.artifact_reviews.filter((review) => projectArtifactIds.has(review.artifact_id)).map((review) => review.created_at),
+          ...data.output_packages.filter((outputPackage) => outputPackage.project_id === project.id).map((outputPackage) => outputPackage.created_at)
+        ])
+      };
+    })
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
 
 export async function createProject(input: { name: string; client_context?: string }): Promise<Project> {
@@ -574,6 +599,10 @@ function latestReview(data: StoreData, artifactId: string): ArtifactReview | und
   return data.artifact_reviews
     .filter((item) => item.artifact_id === artifactId)
     .sort((a, b) => b.version - a.version)[0];
+}
+
+function mostRecentDate(values: string[]) {
+  return values.filter(Boolean).sort((a, b) => b.localeCompare(a))[0] ?? new Date().toISOString();
 }
 
 async function unlinkManagedFile(filePath: string) {

@@ -22,12 +22,16 @@ export function UploadForm({ projectId }: { projectId: string }) {
     body.append("project_id", projectId);
     Array.from(files).forEach((file) => body.append("files", file));
     const response = await fetch("/api/uploads", { method: "POST", body });
+    const result = await response.json().catch(() => ({}));
     setSubmitting(false);
     if (!response.ok) {
-      setStatus("Upload failed. Check that the parser service is running.");
+      setStatus(result.error || "Upload failed. Check that the parser service is running.");
       return;
     }
-    setStatus("Processing complete.");
+    const artifacts = Array.isArray(result.results)
+      ? result.results.reduce((total: number, item: { artifacts?: unknown[] }) => total + (Array.isArray(item.artifacts) ? item.artifacts.length : 0), 0)
+      : 0;
+    setStatus(`Processing complete. ${artifacts} artifact${artifacts === 1 ? "" : "s"} extracted.`);
     router.push(`/projects/${projectId}`);
     router.refresh();
   }

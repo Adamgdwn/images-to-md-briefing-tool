@@ -158,6 +158,13 @@ export type ProjectBundle = {
   output_packages: OutputPackage[];
 };
 
+export type ProjectSummary = Project & {
+  source_count: number;
+  artifact_count: number;
+  approved_count: number;
+  output_package_count: number;
+};
+
 export type StoreData = {
   projects: Project[];
   source_documents: SourceDocument[];

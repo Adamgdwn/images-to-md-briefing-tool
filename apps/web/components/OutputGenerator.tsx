@@ -64,7 +64,7 @@ export function OutputGenerator({ bundle }: { bundle: ProjectBundle }) {
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setStatus("Package could not be generated. Select approved artifacts.");
+        setStatus(result.error || "Package could not be generated. Select approved artifacts.");
         return;
       }
       const outputPackage = result.output_package as OutputPackage;

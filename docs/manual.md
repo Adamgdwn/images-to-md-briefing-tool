@@ -60,6 +60,8 @@ Windows:
 
 Project actions are available from the project detail page. You can rename a project, edit its context, archive it, restore it, or permanently delete it. Deleting a project requires typing the project name and removes related local uploads, artifact images, exports, and store records.
 
+The project list includes active/archived filters, last activity timestamps, and counts for sources, artifacts, and exports. Project artifact lists can be filtered by draft, approved, or rejected review status, and each artifact row shows the latest review version and timestamp.
+
 Reviewer guidance notes are passed into regeneration and output generation. You can type notes and immediately use Regenerate; saving the draft first is not required. Use them to point the engine at the important region, intent, or ambiguity in abstract screenshots; the generated output should reconcile notes with the visible image rather than treating notes as standalone evidence.
 
 ## Authentication

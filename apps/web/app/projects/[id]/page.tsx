@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FileUp, ImageIcon, PackageCheck } from "lucide-react";
+import { ArtifactList } from "@/components/ArtifactList";
 import { OutputGenerator } from "@/components/OutputGenerator";
 import { OutputPackageCard } from "@/components/OutputPackageCard";
 import { ProjectActions } from "@/components/ProjectActions";
@@ -49,35 +50,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <ImageIcon size={16} aria-hidden="true" />
             <h2 className="text-sm font-semibold">Artifacts</h2>
           </div>
-          {bundle.artifacts.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-slate-600">No artifacts extracted yet.</p>
-          ) : (
-            <div className="divide-y divide-line">
-              {bundle.artifacts.map((artifact) => (
-                <Link key={artifact.id} href={`/artifacts/${artifact.id}`} className="grid gap-2 p-4 hover:bg-slate-50 md:grid-cols-[160px_1fr_170px]">
-                  <img src={`/api/artifacts/${artifact.id}/image`} alt="Extracted artifact preview" className="h-24 w-full border border-line object-contain" />
-                  <div>
-                    <p className="text-sm font-medium">{artifact.extraction?.layout_summary ?? artifact.artifact_type}</p>
-                    <p className="mt-1 text-xs text-slate-600">
-                      {artifact.category} / {artifact.subtype} · class {artifact.classification_confidence.toFixed(2)}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-600">
-                      Legacy {artifact.artifact_type} · confidence {artifact.confidence.toFixed(2)}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-600">
-                      OCR {artifact.ocr_backend} · {artifact.ocr_confidence.toFixed(2)}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-600">
-                      Interpretation {artifact.interpretation_backend} · {artifact.interpretation_confidence.toFixed(2)}
-                    </p>
-                  </div>
-                  <span className="self-start text-sm font-medium text-pine">
-                    {artifact.latest_review?.review_status === "approved" ? "Approved" : "Review and approve"}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
+          <ArtifactList artifacts={bundle.artifacts} />
         </div>
 
         <div className="grid content-start gap-4">

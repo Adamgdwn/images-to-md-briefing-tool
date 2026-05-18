@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ReviewBadge } from "@/components/ArtifactList";
 import { ReviewForm } from "@/components/ReviewForm";
 import { getArtifactDetail } from "@/lib/store";
 
@@ -21,9 +22,11 @@ export default async function ArtifactReviewPage({ params }: { params: Promise<{
           </Link>
           <h1 className="mt-1 text-xl font-semibold tracking-normal">Artifact Review</h1>
         </div>
-        <div className="text-sm text-slate-600">
-          Version {latestReview?.version ?? 0} · {latestReview?.review_status ?? "draft"}
-          {isArchived ? " · archived project" : ""}
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <ReviewBadge status={latestReview?.review_status ?? "draft"} />
+          <span>v{latestReview?.version ?? 0}</span>
+          <span>{latestReview ? formatDateTime(latestReview.created_at) : "No review yet"}</span>
+          {isArchived ? <span>Archived project</span> : null}
         </div>
       </div>
       <ReviewForm artifact={detail.artifact} extraction={detail.extraction} latestReview={latestReview} readOnly={isArchived} />
@@ -41,4 +44,14 @@ export default async function ArtifactReviewPage({ params }: { params: Promise<{
       </section>
     </main>
   );
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
