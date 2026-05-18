@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { artifactsDir, exportsDir, storePath, uploadsDir } from "@/lib/paths";
+import { artifactsDir, dataDir, exportsDir, storePath, uploadsDir } from "@/lib/paths";
 import type {
   Artifact,
   ArtifactExtraction,
@@ -74,6 +74,103 @@ export async function createProject(input: { name: string; client_context?: stri
   data.audit_events.push(audit(project.id, "project_created", "project", project.id));
   await writeStore(data);
   return project;
+}
+
+export async function updateProject(input: {
+  id: string;
+  name?: string;
+  client_context?: string;
+  status?: Project["status"];
+}): Promise<Project | null> {
+  const data = await readStore();
+  const project = data.projects.find((item) => item.id === input.id);
+  if (!project) {
+    return null;
+  }
+  const now = new Date().toISOString();
+  if (typeof input.name === "string") {
+    project.name = input.name;
+  }
+  if (typeof input.client_context === "string") {
+    project.client_context = input.client_context;
+  }
+  if (input.status) {
+    project.status = input.status;
+  }
+  project.updated_at = now;
+  data.audit_events.push(
+    audit(
+      project.id,
+      input.status === "archived" ? "project_archived" : input.status === "active" ? "project_restored" : "project_updated",
+      "project",
+      project.id,
+      { status: project.status }
+    )
+  );
+  await writeStore(data);
+  return project;
+}
+
+export async function deleteProject(projectId: string): Promise<{
+  project: Project;
+  deleted_files: number;
+  deleted_records: Record<string, number>;
+} | null> {
+  const data = await readStore();
+  const project = data.projects.find((item) => item.id === projectId);
+  if (!project) {
+    return null;
+  }
+
+  const sourceDocuments = data.source_documents.filter((item) => item.project_id === projectId);
+  const processingJobs = data.processing_jobs.filter((item) => item.project_id === projectId);
+  const artifacts = data.artifacts.filter((item) => item.project_id === projectId);
+  const artifactIds = new Set(artifacts.map((item) => item.id));
+  const artifactExtractions = data.artifact_extractions.filter((item) => artifactIds.has(item.artifact_id));
+  const artifactReviews = data.artifact_reviews.filter((item) => artifactIds.has(item.artifact_id));
+  const outputPackages = data.output_packages.filter((item) => item.project_id === projectId);
+  const filePaths = [
+    ...sourceDocuments.map((item) => item.storage_path),
+    ...artifacts.map((item) => item.image_path),
+    ...outputPackages.map((item) => item.storage_path).filter((value): value is string => Boolean(value))
+  ];
+  const deletedRecords = {
+    projects: 1,
+    source_documents: sourceDocuments.length,
+    processing_jobs: processingJobs.length,
+    artifacts: artifacts.length,
+    artifact_extractions: artifactExtractions.length,
+    artifact_reviews: artifactReviews.length,
+    output_packages: outputPackages.length
+  };
+
+  data.audit_events.push(
+    audit(project.id, "project_deleted", "project", project.id, {
+      project_name: project.name,
+      deleted_records: deletedRecords
+    })
+  );
+  data.projects = data.projects.filter((item) => item.id !== projectId);
+  data.source_documents = data.source_documents.filter((item) => item.project_id !== projectId);
+  data.processing_jobs = data.processing_jobs.filter((item) => item.project_id !== projectId);
+  data.artifacts = data.artifacts.filter((item) => item.project_id !== projectId);
+  data.artifact_extractions = data.artifact_extractions.filter((item) => !artifactIds.has(item.artifact_id));
+  data.artifact_reviews = data.artifact_reviews.filter((item) => !artifactIds.has(item.artifact_id));
+  data.output_packages = data.output_packages.filter((item) => item.project_id !== projectId);
+  await writeStore(data);
+
+  let deletedFiles = 0;
+  for (const filePath of filePaths) {
+    if (await unlinkManagedFile(filePath)) {
+      deletedFiles += 1;
+    }
+  }
+
+  return {
+    project,
+    deleted_files: deletedFiles,
+    deleted_records: deletedRecords
+  };
 }
 
 export async function getProjectBundle(projectId: string): Promise<ProjectBundle | null> {
@@ -479,7 +576,21 @@ function latestReview(data: StoreData, artifactId: string): ArtifactReview | und
     .sort((a, b) => b.version - a.version)[0];
 }
 
-function audit(projectId: string, eventType: string, subjectType: string, subjectId: string) {
+async function unlinkManagedFile(filePath: string) {
+  const resolvedPath = path.resolve(filePath);
+  const resolvedDataDir = path.resolve(dataDir());
+  if (!resolvedPath.startsWith(`${resolvedDataDir}${path.sep}`)) {
+    return false;
+  }
+  try {
+    await fs.unlink(resolvedPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function audit(projectId: string, eventType: string, subjectType: string, subjectId: string, metadata: Record<string, unknown> = {}) {
   return {
     id: randomUUID(),
     project_id: projectId,
@@ -487,7 +598,7 @@ function audit(projectId: string, eventType: string, subjectType: string, subjec
     event_type: eventType,
     subject_type: subjectType,
     subject_id: subjectId,
-    metadata: {},
+    metadata,
     created_at: new Date().toISOString()
   };
 }

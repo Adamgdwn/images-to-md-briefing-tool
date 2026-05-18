@@ -9,6 +9,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!detail) {
     return NextResponse.json({ error: "Artifact not found." }, { status: 404 });
   }
+  if (detail.project?.status === "archived") {
+    return NextResponse.json({ error: "Archived project artifacts cannot be regenerated." }, { status: 409 });
+  }
 
   try {
     const payload = await request.json().catch(() => ({}));

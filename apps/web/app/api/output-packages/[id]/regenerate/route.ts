@@ -17,6 +17,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!bundle) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 });
   }
+  if (bundle.project.status === "archived") {
+    return NextResponse.json({ error: "Archived projects cannot regenerate output packages." }, { status: 409 });
+  }
 
   const artifacts = bundle.artifacts.filter(
     (artifact) => outputPackage.source_selection.includes(artifact.id) && artifact.latest_review?.review_status === "approved"

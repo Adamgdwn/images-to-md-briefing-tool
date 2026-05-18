@@ -28,6 +28,9 @@ export async function POST(request: Request) {
   if (!bundle) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 });
   }
+  if (bundle.project.status === "archived") {
+    return NextResponse.json({ error: "Archived projects cannot generate output packages." }, { status: 409 });
+  }
 
   const artifacts = bundle.artifacts.filter(
     (artifact) => parsed.data.artifact_ids.includes(artifact.id) && artifact.latest_review?.review_status === "approved"

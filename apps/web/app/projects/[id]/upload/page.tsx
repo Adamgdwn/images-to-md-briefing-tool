@@ -19,7 +19,11 @@ export default async function UploadPage({ params }: { params: Promise<{ id: str
         <h1 className="mt-3 text-2xl font-semibold tracking-normal">Upload Source Files</h1>
         <p className="mt-1 text-sm text-slate-600">DOCX, PDF, PNG, JPG, and WebP are supported for v1.</p>
       </div>
-      <UploadForm projectId={bundle.project.id} />
+      {bundle.project.status === "archived" ? (
+        <p className="border border-line bg-white p-4 text-sm text-slate-600">This project is archived.</p>
+      ) : (
+        <UploadForm projectId={bundle.project.id} />
+      )}
     </main>
   );
 }

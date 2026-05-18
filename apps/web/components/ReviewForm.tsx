@@ -57,11 +57,13 @@ const subtypes: ArtifactSubtype[] = [
 export function ReviewForm({
   artifact,
   extraction,
-  latestReview
+  latestReview,
+  readOnly = false
 }: {
   artifact: Artifact;
   extraction?: ArtifactExtraction;
   latestReview?: ArtifactReview;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [artifactType, setArtifactType] = useState<ArtifactType>(artifact.artifact_type);
@@ -84,6 +86,10 @@ export function ReviewForm({
 
   async function submit(reviewStatus: "draft" | "approved" | "rejected") {
     setStatus("");
+    if (readOnly) {
+      setStatus("Archived project artifacts cannot be changed.");
+      return;
+    }
     let parsedJson: Record<string, unknown>;
     try {
       parsedJson = JSON.parse(jsonText);
@@ -274,14 +280,19 @@ export function ReviewForm({
           />
         </label>
         <div className="flex flex-wrap items-center gap-2">
-          <button className="inline-flex h-10 items-center gap-2 border border-line bg-white px-4 text-sm font-medium" title="Save draft">
+          <button
+            disabled={readOnly}
+            className="inline-flex h-10 items-center gap-2 border border-line bg-white px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+            title="Save draft"
+          >
             <Save size={16} />
             Save Draft
           </button>
           <button
             type="button"
             onClick={() => void submit("approved")}
-            className="inline-flex h-10 items-center gap-2 bg-pine px-4 text-sm font-medium text-white"
+            disabled={readOnly}
+            className="inline-flex h-10 items-center gap-2 bg-pine px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
             title="Approve artifact"
           >
             <Check size={16} />
@@ -290,7 +301,8 @@ export function ReviewForm({
           <button
             type="button"
             onClick={() => void submit("rejected")}
-            className="inline-flex h-10 items-center gap-2 bg-brick px-4 text-sm font-medium text-white"
+            disabled={readOnly}
+            className="inline-flex h-10 items-center gap-2 bg-brick px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
             title="Reject artifact"
           >
             <X size={16} />
@@ -299,6 +311,10 @@ export function ReviewForm({
           <button
             type="button"
             onClick={async () => {
+              if (readOnly) {
+                setStatus("Archived project artifacts cannot be regenerated.");
+                return;
+              }
               setStatus("Regenerating from image...");
               const response = await fetch(`/api/artifacts/${artifact.id}/regenerate`, {
                 method: "POST",
@@ -315,7 +331,8 @@ export function ReviewForm({
               setStatus(visionWarning || "Regenerated.");
               router.refresh();
             }}
-            className="inline-flex h-10 items-center gap-2 border border-line bg-white px-4 text-sm font-medium"
+            disabled={readOnly}
+            className="inline-flex h-10 items-center gap-2 border border-line bg-white px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
             title="Regenerate interpretation"
           >
             <RotateCcw size={16} />

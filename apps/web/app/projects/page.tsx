@@ -27,11 +27,15 @@ export default async function ProjectsPage() {
             <Link
               key={project.id}
               href={`/projects/${project.id}`}
-              className="grid grid-cols-[1.2fr_1fr_140px] border-b border-line px-4 py-3 text-sm last:border-b-0 hover:bg-slate-50"
+              className={`grid grid-cols-[1.2fr_1fr_140px] border-b border-line px-4 py-3 text-sm last:border-b-0 hover:bg-slate-50 ${
+                project.status === "archived" ? "bg-slate-50 text-slate-500" : ""
+              }`}
             >
               <span className="font-medium">{project.name}</span>
               <span className="text-slate-600">{project.client_context || "Internal"}</span>
-              <span className="text-slate-600">{project.status}</span>
+              <span>
+                <span className="border border-line bg-white px-2 py-1 text-xs font-semibold uppercase text-slate-600">{project.status}</span>
+              </span>
             </Link>
           ))
         )}

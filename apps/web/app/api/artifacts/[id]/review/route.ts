@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { saveArtifactReview } from "@/lib/store";
+import { getArtifactDetail, saveArtifactReview } from "@/lib/store";
 
 const reviewSchema = z.object({
   review_status: z.enum(["draft", "approved", "rejected"]),
@@ -63,6 +63,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const parsed = reviewSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+  const detail = await getArtifactDetail(id);
+  if (!detail) {
+    return NextResponse.json({ error: "Artifact not found." }, { status: 404 });
+  }
+  if (detail.project?.status === "archived") {
+    return NextResponse.json({ error: "Archived project artifacts cannot be reviewed." }, { status: 409 });
   }
   const review = await saveArtifactReview({
     artifact_id: id,

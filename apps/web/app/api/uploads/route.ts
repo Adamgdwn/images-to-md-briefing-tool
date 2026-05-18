@@ -7,6 +7,7 @@ import {
   createArtifactWithExtraction,
   createProcessingJob,
   createSourceDocument,
+  getProjectBundle,
   updateProcessingJob,
   updateSourceDocumentPageCount
 } from "@/lib/store";
@@ -20,6 +21,13 @@ export async function POST(request: Request) {
 
   if (!projectId || files.length === 0) {
     return NextResponse.json({ error: "project_id and at least one file are required." }, { status: 400 });
+  }
+  const bundle = await getProjectBundle(projectId);
+  if (!bundle) {
+    return NextResponse.json({ error: "Project not found." }, { status: 404 });
+  }
+  if (bundle.project.status === "archived") {
+    return NextResponse.json({ error: "Archived projects cannot receive new uploads." }, { status: 409 });
   }
 
   const results = [];

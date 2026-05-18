@@ -10,6 +10,7 @@ export default async function ArtifactReviewPage({ params }: { params: Promise<{
     notFound();
   }
   const latestReview = detail.reviews[0];
+  const isArchived = detail.project?.status === "archived";
 
   return (
     <main>
@@ -22,9 +23,10 @@ export default async function ArtifactReviewPage({ params }: { params: Promise<{
         </div>
         <div className="text-sm text-slate-600">
           Version {latestReview?.version ?? 0} · {latestReview?.review_status ?? "draft"}
+          {isArchived ? " · archived project" : ""}
         </div>
       </div>
-      <ReviewForm artifact={detail.artifact} extraction={detail.extraction} latestReview={latestReview} />
+      <ReviewForm artifact={detail.artifact} extraction={detail.extraction} latestReview={latestReview} readOnly={isArchived} />
       <section className="border-t border-line bg-white px-6 py-5">
         <h2 className="text-sm font-semibold">Version history</h2>
         <div className="mt-3 grid gap-2">
