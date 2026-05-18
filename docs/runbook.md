@@ -24,6 +24,10 @@ Windows:
 
 Logs are written to `data/logs`.
 
+## Git Workflow
+
+Commit and push directly to `main` for this repository. Do not create feature branches or pull requests unless the owner explicitly asks for them.
+
 ## Common Issues
 
 ### Upload fails
