@@ -1,0 +1,113 @@
+schema_version: 1
+id: screenshot-briefing
+name: "Screenshot Briefing"
+description: |
+  Uses the local Screenshot Briefing Parser to turn screenshots, PDFs, DOCX,
+  OpenDocument files, and other supported visual inputs into Markdown/JSON
+  artifacts that Freedom can reason over before building.
+version: "1.0.0"
+owner: adamgoodwin@shaw.ca
+tags: [briefing, screenshot, ocr, requirements, build-intake, document-intake]
+
+intent:
+  summary: "Convert visual or document source material into implementation-ready briefing artifacts."
+  triggers:
+    - "brief this screenshot"
+    - "turn this PDF into build requirements"
+    - "read this business card or document"
+    - "make a Codex-ready package from screenshots"
+    - "interpret this app screenshot"
+  categories: [build-intake, visual-understanding, document-understanding, self-evolving]
+
+invocation:
+  kind: subprocess
+  command:
+    - "python3"
+    - "freedom_screenshot_briefing.py"
+  cwd: "/home/adamgoodwin/code/Applications/images-to-md-briefing-tool"
+  params_transport: stdin_json
+  env_passthrough:
+    - FREEDOM_SCREENSHOT_BRIEFING_PARSER_URL
+    - SCREENSHOT_BRIEFING_PARSER_URL
+  timeout_seconds: 75
+  streaming: false
+
+parameters:
+  required: []
+  properties:
+    action:
+      type: string
+      description: "Operation to perform."
+      enum: [health, parse_source_document, interpret_image]
+    file_path:
+      type: string
+      description: "Local file to parse. Required except for action=health."
+      maxLength: 1000
+    source_document:
+      type: string
+      description: "Human label for an uploaded image when interpreting one artifact."
+      maxLength: 300
+    run_vision:
+      type: boolean
+      description: "Allow the parser to use its configured vision model during source-document parsing."
+    parser_url:
+      type: string
+      description: "Override parser base URL. Defaults to env or http://127.0.0.1:8000."
+      maxLength: 200
+    max_text_chars:
+      type: integer
+      description: "Maximum characters retained per text field in the dispatcher result."
+      minimum: 500
+      maximum: 20000
+
+output:
+  kind: json_stdout
+  schema:
+    type: object
+    required: [status, parser_url]
+    properties:
+      status:
+        type: string
+      parser_url:
+        type: string
+      source_file:
+        type: string
+      artifact_count:
+        type: integer
+      warnings:
+        type: array
+        items: {type: string}
+      artifacts:
+        type: array
+        items: {type: object}
+      artifact:
+        type: object
+      start_command:
+        type: string
+
+governance:
+  autonomy:
+    level: A1
+    upgrade_policy: operator-verbal
+    last_changed_by: codex
+    last_changed_at: "2026-05-18T00:00:00Z"
+    last_changed_reason: "Reads local files and sends them to the local parser service, so operator approval is required initially."
+  preconditions: []
+  notes: |
+    This wrapper reads only files inside the operator home directory or /tmp and
+    calls the local parser service. It does not write files, send email, deploy,
+    or mutate external systems.
+
+side_effects:
+  filesystem_reads:
+    - "~/... source files selected by the operator"
+    - "/tmp/... source files selected by the operator"
+  filesystem_writes: []
+  network_egress:
+    - "127.0.0.1 parser service by default"
+  database_writes: []
+  process_spawn: []
+
+audit:
+  correlation_id_param: audit_correlation_id
+  log_sink: stderr
