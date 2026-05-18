@@ -48,6 +48,7 @@ The web app and database consume only normalized fields, including `raw_ocr_text
 
 - V1 is end-to-end runnable locally without a hosted Supabase project by using a local JSON store that mirrors the Supabase schema.
 - The Supabase migration is still first-class and defines the production data contract.
+- Hosted storage objects are user-owned by path convention: the first object path segment must be the authenticated user's UUID.
 - OCR and interpretation degrade gracefully, preserving the review workflow even when native OCR or LLM providers are unavailable.
 - OCR backend experimentation is isolated to the parser service.
 - Human approval is required before output generation.

@@ -7,17 +7,20 @@ Use the Ubuntu or Windows launchers in `scripts/`.
 ## Supabase
 
 1. Create a Supabase project.
-2. Run `supabase/migrations/001_initial_schema.sql`.
+2. Run every SQL file in `supabase/migrations` in filename order.
 3. Confirm these buckets exist:
    - `source-documents`
    - `artifact-images`
    - `output-packages`
-4. Configure auth providers for email/password and magic link.
-5. Set web environment variables:
+4. Store hosted objects under `<auth.uid()>/<project-id>/...` so storage RLS can enforce ownership.
+5. Configure auth providers for email/password and magic link.
+6. Set web environment variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `PARSER_URL`
+
+See `docs/supabase-migration-path.md` for migration notes, storage policy expectations, and cascade-delete behavior.
 
 ## Web App
 
