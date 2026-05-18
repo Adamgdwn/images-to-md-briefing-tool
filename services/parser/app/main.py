@@ -19,7 +19,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "app": "screenshot-briefing-parser", "version": app.version}
 
 
 @app.post("/parse/source-document")

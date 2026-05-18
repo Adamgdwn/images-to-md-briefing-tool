@@ -12,7 +12,7 @@ export async function upsertEnvLocal(values: Record<string, string>) {
   }
 
   for (const [key, value] of Object.entries(values)) {
-    const nextLine = `${key}=${value}`;
+    const nextLine = `${key}=${quoteEnvValue(value)}`;
     const index = lines.findIndex((line) => line.startsWith(`${key}=`));
     if (index >= 0) {
       lines[index] = nextLine;
@@ -22,4 +22,11 @@ export async function upsertEnvLocal(values: Record<string, string>) {
   }
 
   await fs.writeFile(envPath, `${lines.filter(Boolean).join("\n")}\n`);
+}
+
+function quoteEnvValue(value: string): string {
+  if (/^[A-Za-z0-9_./:@-]*$/.test(value)) {
+    return value;
+  }
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }

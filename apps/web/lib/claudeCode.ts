@@ -1,4 +1,7 @@
+import { constants, promises as fs } from "node:fs";
 import { execFile, spawn } from "node:child_process";
+import { homedir } from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -15,8 +18,8 @@ export type ClaudeCodeStatus = {
 };
 
 export async function getClaudeCodeStatus(): Promise<ClaudeCodeStatus> {
-  const path = await findClaudePath();
-  if (!path) {
+  const claudePath = await findClaudePath();
+  if (!claudePath) {
     return {
       installed: false,
       path: null,
@@ -29,13 +32,13 @@ export async function getClaudeCodeStatus(): Promise<ClaudeCodeStatus> {
     };
   }
 
-  const version = await runText(path, ["--version"]);
-  const statusText = await runText(path, ["auth", "status"]);
+  const version = await runText(claudePath, ["--version"]);
+  const statusText = await runText(claudePath, ["auth", "status"]);
   try {
     const status = JSON.parse(statusText);
     return {
       installed: true,
-      path,
+      path: claudePath,
       version,
       loggedIn: Boolean(status.loggedIn),
       authMethod: status.authMethod ?? null,
@@ -46,7 +49,7 @@ export async function getClaudeCodeStatus(): Promise<ClaudeCodeStatus> {
   } catch {
     return {
       installed: true,
-      path,
+      path: claudePath,
       version,
       loggedIn: false,
       authMethod: null,
@@ -58,12 +61,12 @@ export async function getClaudeCodeStatus(): Promise<ClaudeCodeStatus> {
 }
 
 export async function openClaudeCodeLogin() {
-  const path = await findClaudePath();
-  if (!path) {
+  const claudePath = await findClaudePath();
+  if (!claudePath) {
     throw new Error("Claude Code CLI is not installed.");
   }
 
-  const command = `${shellQuote(path)} auth login; echo; read -r -p "Press Enter to close this window..."`;
+  const command = `${shellQuote(claudePath)} auth login; echo; read -r -p "Press Enter to close this window..."`;
   const terminal = findTerminal();
   if (terminal) {
     const child = spawn(terminal.command, [...terminal.args, command], {
@@ -74,7 +77,7 @@ export async function openClaudeCodeLogin() {
     return;
   }
 
-  const child = spawn(path, ["auth", "login"], {
+  const child = spawn(claudePath, ["auth", "login"], {
     detached: true,
     stdio: "ignore"
   });
@@ -89,10 +92,12 @@ async function findClaudePath(): Promise<string | null> {
       return resolved;
     }
   }
+  const home = process.env.HOME || homedir();
   const candidates = [
     "claude",
-    `${process.env.HOME}/.local/bin/claude`,
-    `${process.env.HOME}/.npm-global/bin/claude`
+    path.join(home, ".local/bin/claude"),
+    path.join(home, ".npm-global/bin/claude"),
+    ...(await nvmClaudeCandidates(home))
   ];
   for (const candidate of candidates) {
     const resolved = await resolveExecutable(candidate);
@@ -104,11 +109,29 @@ async function findClaudePath(): Promise<string | null> {
 }
 
 async function resolveExecutable(command: string): Promise<string | null> {
+  if (command.includes("/")) {
+    try {
+      await fs.access(command, constants.X_OK);
+      return command;
+    } catch {
+      return null;
+    }
+  }
   try {
     const result = await execFileAsync("bash", ["-lc", `command -v ${shellQuote(command)}`], { timeout: 3000 });
     return result.stdout.trim() || null;
   } catch {
     return null;
+  }
+}
+
+async function nvmClaudeCandidates(home: string): Promise<string[]> {
+  const versionsDir = path.join(home, ".nvm/versions/node");
+  try {
+    const versions = await fs.readdir(versionsDir);
+    return versions.sort().reverse().map((version) => path.join(versionsDir, version, "bin/claude"));
+  } catch {
+    return [];
   }
 }
 

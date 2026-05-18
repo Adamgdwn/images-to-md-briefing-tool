@@ -2,8 +2,11 @@
 
 ## Health Checks
 
-- Web: `http://localhost:3000/projects`
-- Parser: `http://127.0.0.1:8000/health`
+- Web app identity: `http://127.0.0.1:3000/api/health`
+- Web page: `http://127.0.0.1:3000/projects`
+- Parser identity: `http://127.0.0.1:8000/health`
+
+The launchers require the identity health responses to include `status: ok` and the expected app name before reusing a running service on the same port.
 
 ## Launch
 
@@ -29,6 +32,12 @@ Confirm the parser is running:
 
 ```bash
 curl http://127.0.0.1:8000/health
+```
+
+Confirm the web service is this app:
+
+```bash
+curl http://127.0.0.1:3000/api/health
 ```
 
 ### Unable to connect

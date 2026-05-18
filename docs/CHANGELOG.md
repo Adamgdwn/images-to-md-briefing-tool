@@ -12,3 +12,4 @@
 - Added LibreOffice/OpenDocument upload support and clearer review-before-generate UI behavior.
 - Added Claude vision interpretation for coding-oriented image-to-Markdown artifact briefs and real artifact regeneration.
 - Added provider settings and Claude Code account mode so local users can connect with their Claude account instead of an API key.
+- Hardened desktop launchers with app-specific health checks, nvm-aware startup, safer PID handling, and quoted environment/launcher paths.

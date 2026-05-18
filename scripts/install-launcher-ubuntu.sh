@@ -7,16 +7,24 @@ ICON_DIR="$HOME/.local/share/icons"
 DESKTOP_FILE="$APP_DIR/screenshot-briefing-tool.desktop"
 DESKTOP_COPY="$HOME/Desktop/screenshot-briefing-tool.desktop"
 
+desktop_quote() {
+  local value="${1//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "$value"
+}
+
 mkdir -p "$APP_DIR" "$ICON_DIR"
 cp "$ROOT_DIR/assets/screenshot-briefing-tool.svg" "$ICON_DIR/screenshot-briefing-tool.svg"
 cp "$ROOT_DIR/assets/screenshot-briefing-tool.ico" "$ICON_DIR/screenshot-briefing-tool.ico"
+
+EXEC_COMMAND="$(desktop_quote "$ROOT_DIR/scripts/launch-ubuntu.sh")"
 
 cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Screenshot Briefing Tool
 Comment=Launch the screenshot-to-brief review workspace
-Exec=$ROOT_DIR/scripts/launch-ubuntu.sh
+Exec=$EXEC_COMMAND
 Icon=$ICON_DIR/screenshot-briefing-tool.svg
 Terminal=false
 Categories=Development;Office;

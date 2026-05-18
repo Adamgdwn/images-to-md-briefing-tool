@@ -182,7 +182,7 @@ def prefer_claude_code() -> bool:
     mode = os.getenv("ANTHROPIC_AUTH_MODE", "claude_code").strip().lower()
     if mode in {"api", "api_key", "apikey"}:
         return False
-    return shutil.which(os.getenv("CLAUDE_CODE_PATH", "claude")) is not None
+    return resolve_claude_code_path() is not None
 
 
 def generate_with_claude_code(prompt: str) -> str | None:
@@ -263,7 +263,9 @@ def interpret_image_with_claude_code(
 
 
 def run_claude_code(prompt: str) -> str | None:
-    claude_path = os.getenv("CLAUDE_CODE_PATH", "claude")
+    claude_path = resolve_claude_code_path()
+    if not claude_path:
+        raise RuntimeError("Claude Code provider unavailable: CLI not found.")
     model = os.getenv("CLAUDE_CODE_MODEL", "sonnet")
     env = os.environ.copy()
     if os.getenv("ANTHROPIC_AUTH_MODE", "claude_code").strip().lower() not in {"api", "api_key", "apikey"}:
@@ -287,7 +289,7 @@ def run_claude_code(prompt: str) -> str | None:
             env=env,
             capture_output=True,
             text=True,
-            timeout=int(os.getenv("CLAUDE_CODE_TIMEOUT_SECONDS", "180")),
+            timeout=claude_code_timeout_seconds(),
             check=False,
         )
     except Exception as exc:
@@ -301,6 +303,41 @@ def run_claude_code(prompt: str) -> str | None:
         return str(data.get("result", "")).strip()
     except json.JSONDecodeError:
         return completed.stdout.strip() or None
+
+
+def resolve_claude_code_path() -> str | None:
+    configured = os.getenv("CLAUDE_CODE_PATH", "claude")
+    resolved = executable_path(configured)
+    if resolved:
+        return resolved
+
+    home = Path.home()
+    candidates = [
+        "claude",
+        str(home / ".local/bin/claude"),
+        str(home / ".npm-global/bin/claude"),
+    ]
+    nvm_dir = home / ".nvm/versions/node"
+    if nvm_dir.exists():
+        candidates.extend(str(path / "bin/claude") for path in sorted(nvm_dir.iterdir(), reverse=True) if path.is_dir())
+    for candidate in candidates:
+        resolved = executable_path(candidate)
+        if resolved:
+            return resolved
+    return None
+
+
+def executable_path(command: str) -> str | None:
+    if "/" in command:
+        return command if os.path.isfile(command) and os.access(command, os.X_OK) else None
+    return shutil.which(command)
+
+
+def claude_code_timeout_seconds() -> int:
+    try:
+        return max(1, int(os.getenv("CLAUDE_CODE_TIMEOUT_SECONDS", "180")))
+    except ValueError:
+        return 180
 
 
 def build_prompt(payload: OutputPackageRequest) -> str:
