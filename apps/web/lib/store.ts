@@ -447,6 +447,18 @@ export async function getOutputPackage(packageId: string): Promise<OutputPackage
   return data.output_packages.find((item) => item.id === packageId) ?? null;
 }
 
+export async function deleteOutputPackage(packageId: string): Promise<OutputPackage | null> {
+  const data = await readStore();
+  const index = data.output_packages.findIndex((item) => item.id === packageId);
+  if (index < 0) {
+    return null;
+  }
+  const [outputPackage] = data.output_packages.splice(index, 1);
+  data.audit_events.push(audit(outputPackage.project_id, "output_deleted", "output_package", outputPackage.id));
+  await writeStore(data);
+  return outputPackage;
+}
+
 export async function approvedArtifactsForProject(projectId: string) {
   const bundle = await getProjectBundle(projectId);
   if (!bundle) {

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Download, RefreshCw } from "lucide-react";
+import { Download, RefreshCw, Trash2 } from "lucide-react";
 import type { OutputPackage } from "@/types/domain";
 
 const packageLabels: Record<OutputPackage["package_type"], string> = {
@@ -16,6 +16,7 @@ const packageLabels: Record<OutputPackage["package_type"], string> = {
 export function OutputPackageCard({ item }: { item: OutputPackage }) {
   const router = useRouter();
   const [status, setStatus] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const generatedAt = exportDisplayTime(item.output_json, item.created_at);
 
   async function regenerate() {
@@ -28,6 +29,28 @@ export function OutputPackageCard({ item }: { item: OutputPackage }) {
     }
     setStatus(`Regenerated at ${new Date().toLocaleString()}.`);
     router.refresh();
+  }
+
+  async function deleteExport() {
+    if (!window.confirm("Delete this export? This removes it from the project list and deletes the stored export file when available.")) {
+      return;
+    }
+    setIsDeleting(true);
+    setStatus("Deleting...");
+    try {
+      const response = await fetch(`/api/output-packages/${item.id}`, { method: "DELETE" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setStatus(data.error || "Could not delete export.");
+        return;
+      }
+      setStatus("Deleted.");
+      router.refresh();
+    } catch {
+      setStatus("Could not delete export.");
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   return (
@@ -52,6 +75,16 @@ export function OutputPackageCard({ item }: { item: OutputPackage }) {
         >
           <RefreshCw size={16} />
           Regenerate Output
+        </button>
+        <button
+          type="button"
+          onClick={deleteExport}
+          disabled={isDeleting}
+          className="inline-flex h-9 items-center gap-2 border border-brick bg-white px-3 text-sm font-medium text-brick disabled:cursor-not-allowed disabled:opacity-60"
+          title="Delete export"
+        >
+          <Trash2 size={16} />
+          {isDeleting ? "Deleting..." : "Delete Export"}
         </button>
         <span className="text-sm text-slate-600">{status}</span>
       </div>
