@@ -265,11 +265,12 @@ export function ReviewForm({
           />
         </label>
         <label className="grid gap-1 text-sm font-medium">
-          Notes
+          Reviewer guidance notes
           <textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             className="min-h-24 resize-y border border-line p-3 text-sm"
+            placeholder="Point out what the next regeneration or export should focus on."
           />
         </label>
         <div className="flex flex-wrap items-center gap-2">

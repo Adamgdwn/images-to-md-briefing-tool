@@ -67,6 +67,7 @@ def interpret_image_candidate(
     source_filename: str,
     candidate: ImageCandidate,
     artifact_id: str | None = None,
+    reviewer_notes: str = "",
     run_vision: bool = True,
 ) -> tuple[ExtractedArtifact, list[str]]:
     artifact_id = artifact_id or str(uuid.uuid4())
@@ -87,6 +88,7 @@ def interpret_image_candidate(
                 raw_ocr_text=ocr_result.raw_text,
                 ocr_backend=ocr_result.backend,
                 ocr_confidence=ocr_result.confidence,
+                reviewer_notes=reviewer_notes,
             )
         except Exception as exc:
             warnings.append(f"Vision interpretation unavailable: {exc}")
@@ -154,6 +156,8 @@ def interpret_image_candidate(
     json_output["interpretation_backend"] = "local_template"
     json_output["interpretation_confidence"] = confidence
     json_output["layout_data"] = ocr_result.layout_data
+    if reviewer_notes:
+        json_output["reviewer_notes"] = reviewer_notes
     return (
         ExtractedArtifact(
             source_filename=source_filename,

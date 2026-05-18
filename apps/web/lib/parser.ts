@@ -70,6 +70,7 @@ export async function regenerateArtifactImage(input: {
   sourceDocument: string;
   artifactId: string;
   pageNumber: number | null;
+  reviewerNotes?: string;
 }): Promise<{ artifact: ParserArtifact; warnings: string[] }> {
   const parserUrl = process.env.PARSER_URL ?? "http://127.0.0.1:8000";
   const formData = new FormData();
@@ -78,6 +79,9 @@ export async function regenerateArtifactImage(input: {
   formData.append("artifact_id", input.artifactId);
   if (input.pageNumber !== null) {
     formData.append("page_number", String(input.pageNumber));
+  }
+  if (input.reviewerNotes?.trim()) {
+    formData.append("reviewer_notes", input.reviewerNotes.trim());
   }
   const response = await fetch(`${parserUrl}/interpret/image`, {
     method: "POST",

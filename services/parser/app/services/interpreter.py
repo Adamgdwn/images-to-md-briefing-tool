@@ -127,8 +127,12 @@ def generate_output_package(payload: OutputPackageRequest) -> OutputPackageRespo
     for index, artifact in enumerate(payload.artifacts, start=1):
         data = artifact.get("edited_json") or artifact.get("json_output") or {}
         markdown = artifact.get("edited_markdown") or artifact.get("markdown_output") or ""
+        reviewer_notes = str(artifact.get("reviewer_notes") or "").strip()
         artifact_title = data.get("layout_summary") or f"Artifact {index}"
         sections.append(f"## {index}. {artifact_title}")
+        if reviewer_notes:
+            sections.append("### Reviewer notes")
+            sections.append(reviewer_notes)
 
         if payload.package_type == "functional_additions":
             additions = data.get("requested_additions") or []

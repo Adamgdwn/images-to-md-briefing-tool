@@ -38,7 +38,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
             markdown_output: artifact.extraction?.markdown_output,
             json_output: artifact.extraction?.json_output,
             edited_markdown: artifact.latest_review?.edited_markdown,
-            edited_json: artifact.latest_review?.edited_json
+            edited_json: artifact.latest_review?.edited_json,
+            reviewer_notes: artifact.latest_review?.notes
           }))
         });
 

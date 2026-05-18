@@ -54,9 +54,11 @@ Windows:
 4. Wait for processing to complete.
 5. Open each extracted artifact.
 6. Review the original image beside the Markdown and JSON draft.
-7. Adjust artifact type, confidence, Markdown, JSON, notes, ambiguities, or requested additions.
+7. Adjust artifact type, confidence, Markdown, JSON, reviewer guidance notes, ambiguities, or requested additions.
 8. Save draft, approve, or reject.
 9. Return to the project and generate an output package from approved artifacts.
+
+Reviewer guidance notes are passed into regeneration and output generation. Use them to point the engine at the important region, intent, or ambiguity in abstract screenshots; the generated output should reconcile notes with the visible image rather than treating notes as standalone evidence.
 
 ## Authentication
 

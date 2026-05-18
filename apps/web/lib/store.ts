@@ -188,6 +188,7 @@ export async function createArtifactWithExtraction(input: {
   ui_elements_json: Array<Record<string, unknown>>;
   markdown_output: string;
   json_output: Record<string, unknown>;
+  notes?: string;
 }): Promise<Artifact> {
   const data = await readStore();
   const now = new Date().toISOString();
@@ -259,6 +260,7 @@ export async function replaceArtifactExtraction(input: {
   ui_elements_json: Array<Record<string, unknown>>;
   markdown_output: string;
   json_output: Record<string, unknown>;
+  notes?: string;
 }): Promise<Artifact> {
   const data = await readStore();
   const artifact = data.artifacts.find((item) => item.id === input.artifact_id);
@@ -301,7 +303,7 @@ export async function replaceArtifactExtraction(input: {
     review_status: "draft",
     edited_markdown: extraction.markdown_output,
     edited_json: extraction.json_output,
-    notes: "Regenerated from source image.",
+    notes: input.notes ?? "Regenerated from source image.",
     approved_at: null,
     version: currentVersion + 1,
     created_at: now

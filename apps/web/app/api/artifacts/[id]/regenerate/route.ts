@@ -11,13 +11,16 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
 
   try {
+    const latestReview = detail.reviews[0];
+    const reviewerNotes = latestReview?.notes?.trim() ?? "";
     const imageBuffer = await fs.readFile(detail.artifact.image_path);
     const regenerated = await regenerateArtifactImage({
       image: new Blob([imageBuffer], { type: contentType(detail.artifact.image_path) }),
       filename: detail.artifact.image_path.split("/").pop() ?? "artifact.png",
       sourceDocument: detail.source_document?.filename ?? "source image",
       artifactId: detail.artifact.id,
-      pageNumber: detail.artifact.page_number
+      pageNumber: detail.artifact.page_number,
+      reviewerNotes
     });
     const artifact = regenerated.artifact;
     await replaceArtifactExtraction({
@@ -37,7 +40,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       layout_summary: artifact.layout_summary,
       ui_elements_json: artifact.ui_elements,
       markdown_output: artifact.markdown_output,
-      json_output: artifact.json_output
+      json_output: artifact.json_output,
+      notes: reviewerNotes ? `${reviewerNotes}\n\nRegenerated from source image using the reviewer notes above.` : "Regenerated from source image."
     });
     return NextResponse.json({ artifact, warnings: regenerated.warnings });
   } catch (error) {

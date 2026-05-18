@@ -15,3 +15,4 @@
 - Hardened desktop launchers with app-specific health checks, nvm-aware startup, safer PID handling, and quoted environment/launcher paths.
 - Added Bulk LLM export mode with explicit per-artifact boundaries and Markdown download support for approved artifacts.
 - Added export content and file-format controls for generated packages, including Markdown, JSON, combined, `.md`, `.txt`, and `.json` output.
+- Routed reviewer guidance notes into artifact regeneration, output packages, and bulk exports for clearer human-directed interpretation.

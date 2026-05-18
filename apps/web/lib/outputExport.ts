@@ -46,6 +46,7 @@ export function buildBulkLlmExport(bundle: ProjectBundle, artifacts: BundleArtif
     const source = artifact.source_document_id ? sourceById.get(artifact.source_document_id) : null;
     const reviewedMarkdown = artifact.latest_review?.edited_markdown || artifact.extraction?.markdown_output || "";
     const reviewedJson = artifact.latest_review?.edited_json || artifact.extraction?.json_output || {};
+    const reviewerNotes = artifact.latest_review?.notes?.trim() ?? "";
     const label = artifactLabel(index);
     const metadata = {
       artifact_index: label,
@@ -58,7 +59,8 @@ export function buildBulkLlmExport(bundle: ProjectBundle, artifacts: BundleArtif
       subtype: artifact.subtype,
       artifact_type: artifact.artifact_type,
       review_status: artifact.latest_review?.review_status ?? null,
-      approved_at: artifact.latest_review?.approved_at ?? null
+      approved_at: artifact.latest_review?.approved_at ?? null,
+      reviewer_notes: reviewerNotes || null
     };
 
     sections.push(
@@ -69,6 +71,10 @@ export function buildBulkLlmExport(bundle: ProjectBundle, artifacts: BundleArtif
       "## Artifact Metadata",
       "",
       ...metadataLines(metadata),
+      "",
+      "## Reviewer Notes",
+      "",
+      reviewerNotes || "_No reviewer notes recorded._",
       "",
       "<!-- BEGIN_REVIEWED_MARKDOWN -->",
       "",
@@ -87,7 +93,7 @@ export function buildBulkLlmExport(bundle: ProjectBundle, artifacts: BundleArtif
       `<!-- END_ARTIFACT ${label} id=${artifact.id} -->`,
       ""
     );
-    artifactJson.push({ metadata, reviewed_markdown: reviewedMarkdown, reviewed_json: reviewedJson });
+    artifactJson.push({ metadata, reviewer_notes: reviewerNotes, reviewed_markdown: reviewedMarkdown, reviewed_json: reviewedJson });
   }
 
   return {

@@ -71,6 +71,7 @@ def interpret_image_with_claude(
     raw_ocr_text: str,
     ocr_backend: str,
     ocr_confidence: float,
+    reviewer_notes: str = "",
 ) -> VisionInterpretation | None:
     if prefer_claude_code():
         try:
@@ -83,6 +84,7 @@ def interpret_image_with_claude(
                 raw_ocr_text=raw_ocr_text,
                 ocr_backend=ocr_backend,
                 ocr_confidence=ocr_confidence,
+                reviewer_notes=reviewer_notes,
             )
         except RuntimeError:
             cli_result = None
@@ -125,6 +127,7 @@ def interpret_image_with_claude(
                                 raw_ocr_text=raw_ocr_text,
                                 ocr_backend=ocr_backend,
                                 ocr_confidence=ocr_confidence,
+                                reviewer_notes=reviewer_notes,
                             ),
                         },
                     ],
@@ -162,6 +165,7 @@ def interpret_image_with_claude(
             "ocr_backend": ocr_backend,
             "ocr_confidence": round(ocr_confidence, 2),
             "interpretation_backend": "claude_vision",
+            "reviewer_notes": reviewer_notes,
             "review_status": "draft",
         }
     )
@@ -201,6 +205,7 @@ def interpret_image_with_claude_code(
     raw_ocr_text: str,
     ocr_backend: str,
     ocr_confidence: float,
+    reviewer_notes: str = "",
 ) -> VisionInterpretation | None:
     suffix = suffix_for_mime_type(mime_type)
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as image_file:
@@ -217,6 +222,7 @@ def interpret_image_with_claude_code(
                 raw_ocr_text=raw_ocr_text,
                 ocr_backend=ocr_backend,
                 ocr_confidence=ocr_confidence,
+                reviewer_notes=reviewer_notes,
             )
         )
         text = run_claude_code(prompt)
@@ -244,6 +250,7 @@ def interpret_image_with_claude_code(
                 "ocr_backend": ocr_backend,
                 "ocr_confidence": round(ocr_confidence, 2),
                 "interpretation_backend": "claude_code_account",
+                "reviewer_notes": reviewer_notes,
                 "review_status": "draft",
             }
         )
@@ -345,6 +352,7 @@ def build_prompt(payload: OutputPackageRequest) -> str:
 
 Rules:
 - Use only approved reviewed artifact content.
+- Treat reviewer_notes as human guidance for focus, ambiguity resolution, and intent; do not treat notes as direct visual evidence unless supported by edited artifact content.
 - Preserve source traceability when present.
 - Keep ambiguities explicit.
 - Return Markdown only.
@@ -361,7 +369,9 @@ def build_vision_prompt(
     raw_ocr_text: str,
     ocr_backend: str,
     ocr_confidence: float,
+    reviewer_notes: str = "",
 ) -> str:
+    reviewer_guidance = reviewer_notes.strip() or "(none provided)"
     return f"""You are creating a durable screenshot-to-coding brief for an internal build workflow.
 
 The goal is not generic OCR. Convert the image into a compact Markdown and JSON artifact that gives a future LLM or developer enough information to use this screenshot for coding, implementation planning, or process analysis.
@@ -374,6 +384,11 @@ Source:
 - OCR confidence: {ocr_confidence:.2f}
 - OCR text, if any:
 {raw_ocr_text or "(none recovered)"}
+
+Reviewer guidance:
+{reviewer_guidance}
+
+Use reviewer guidance as a focus and interpretation hint, especially for abstract visuals or screenshots where the important region is not obvious. Do not treat notes as visual evidence by themselves; reconcile them with what the image supports and put uncertainty in ambiguities.
 
 Classify with this two-level taxonomy:
 - category: ui_screen, ui_dialog, workflow_visual, presentation_visual, document_visual, unknown_manual_review

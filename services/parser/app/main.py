@@ -59,6 +59,7 @@ async def interpret_image(
     source_document: str = Form("uploaded image"),
     artifact_id: str | None = Form(None),
     page_number: int | None = Form(None),
+    reviewer_notes: str = Form(""),
 ):
     content = await file.read()
     if not content:
@@ -73,6 +74,7 @@ async def interpret_image(
             page_number=page_number,
         ),
         artifact_id,
+        reviewer_notes.strip(),
     )
     return {"artifact": artifact, "warnings": warnings}
 
