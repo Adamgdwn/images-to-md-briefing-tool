@@ -1,9 +1,7 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { requireApiAuth, storeOwnerId } from "@/lib/auth";
-import { buildBulkLlmExport, exportTimestamp, formatTextExport, normalizeTextExportOptions, outputExtension } from "@/lib/outputExport";
-import { exportsDir } from "@/lib/paths";
+import { saveManagedFile } from "@/lib/fileStorage";
+import { buildBulkLlmExport, exportTimestamp, formatTextExport, normalizeTextExportOptions, outputContentType, outputExtension } from "@/lib/outputExport";
 import { generatePackageWithParser } from "@/lib/parser";
 import { getOutputPackage, getProjectBundle, updateOutputPackage } from "@/lib/store";
 
@@ -55,8 +53,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const generated = formatTextExport(generatedBase, exportOptions, generatedAt);
   const filename = `${outputPackage.package_type}-${generatedAt.filename}-regenerated.${outputExtension(generated.output_json)}`;
-  const exportPath = path.join(exportsDir(), filename);
-  await fs.writeFile(exportPath, generated.output_markdown);
+  const exportPath = await saveManagedFile({
+    kind: "export",
+    ownerId: authResult.auth.userId,
+    projectId: outputPackage.project_id,
+    filename,
+    data: generated.output_markdown,
+    contentType: outputContentType(outputExtension(generated.output_json))
+  });
   const updated = await updateOutputPackage({
     id: outputPackage.id,
     output_markdown: generated.output_markdown,

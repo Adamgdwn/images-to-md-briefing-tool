@@ -1,8 +1,6 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { requireApiAuth, storeOwnerId } from "@/lib/auth";
-import { artifactsDir, uploadsDir } from "@/lib/paths";
+import { contentTypeForFilename, saveManagedFile } from "@/lib/fileStorage";
 import { parseSourceDocument } from "@/lib/parser";
 import {
   createArtifactWithExtraction,
@@ -42,9 +40,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Unsupported file type: ${file.name}` }, { status: 400 });
     }
 
-    const uploadPath = path.join(uploadsDir(), `${Date.now()}-${safeName(file.name)}`);
     const bytes = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(uploadPath, bytes);
+    const uploadPath = await saveManagedFile({
+      kind: "source",
+      ownerId: authResult.auth.userId,
+      projectId,
+      filename: file.name,
+      data: bytes,
+      contentType: file.type || contentTypeForFilename(file.name)
+    });
 
     const sourceDocument = await createSourceDocument({
       project_id: projectId,
@@ -65,8 +69,15 @@ export async function POST(request: Request) {
       const artifactIds = [];
       for (const artifact of parseResponse.artifacts) {
         const imageExt = extensionFor(artifact.image_filename) || "png";
-        const imagePath = path.join(artifactsDir(), `${sourceDocument.id}-${artifactIds.length + 1}.${imageExt}`);
-        await fs.writeFile(imagePath, Buffer.from(artifact.image_base64, "base64"));
+        const imageFilename = `${sourceDocument.id}-${artifactIds.length + 1}.${imageExt}`;
+        const imagePath = await saveManagedFile({
+          kind: "artifact",
+          ownerId: authResult.auth.userId,
+          projectId,
+          filename: imageFilename,
+          data: Buffer.from(artifact.image_base64, "base64"),
+          contentType: contentTypeForFilename(imageFilename)
+        });
         const storedArtifact = await createArtifactWithExtraction({
           project_id: projectId,
           source_document_id: sourceDocument.id,
@@ -108,8 +119,4 @@ export async function POST(request: Request) {
 
 function extensionFor(filename: string): string {
   return filename.split(".").pop()?.toLowerCase() ?? "";
-}
-
-function safeName(filename: string): string {
-  return filename.replace(/[^a-zA-Z0-9._-]/g, "-");
 }

@@ -23,3 +23,4 @@
 - Added full-project JSON backups and imports for moving or restoring projects with source files, artifact images, reviews, and exports.
 - Added Supabase schema parity migration for bulk exports, lifecycle audit events, export option fields, audit retention, and user-owned storage policies.
 - Added mode-aware auth enforcement for project, upload, artifact, review, and output routes, plus account state and sign-out controls.
+- Added a mode-aware persistence and file-storage adapter so hosted mode uses Supabase tables and Storage instead of local JSON/files.

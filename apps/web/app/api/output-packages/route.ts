@@ -1,10 +1,8 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiAuth, storeOwnerId } from "@/lib/auth";
-import { buildBulkLlmExport, exportTimestamp, formatTextExport, outputExtension } from "@/lib/outputExport";
-import { exportsDir } from "@/lib/paths";
+import { saveManagedFile } from "@/lib/fileStorage";
+import { buildBulkLlmExport, exportTimestamp, formatTextExport, outputContentType, outputExtension } from "@/lib/outputExport";
 import { generatePackageWithParser } from "@/lib/parser";
 import { createOutputPackage, getProjectBundle } from "@/lib/store";
 
@@ -69,8 +67,14 @@ export async function POST(request: Request) {
     generatedAt
   );
   const filename = `${parsed.data.package_type}-${generatedAt.filename}.${outputExtension(generated.output_json)}`;
-  const exportPath = path.join(exportsDir(), filename);
-  await fs.writeFile(exportPath, generated.output_markdown);
+  const exportPath = await saveManagedFile({
+    kind: "export",
+    ownerId: authResult.auth.userId,
+    projectId: parsed.data.project_id,
+    filename,
+    data: generated.output_markdown,
+    contentType: outputContentType(outputExtension(generated.output_json))
+  });
   const outputPackage = await createOutputPackage({
     project_id: parsed.data.project_id,
     package_type: parsed.data.package_type,

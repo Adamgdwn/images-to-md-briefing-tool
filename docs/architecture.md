@@ -10,6 +10,8 @@ The system ingests DOCX, LibreOffice/OpenDocument, PDF, PNG, JPG, and WebP sourc
 - `services/parser`: FastAPI service for document image extraction, OCR orchestration, classification, interpretation, and package generation.
 - `supabase/migrations`: Production schema, RLS policies, and storage bucket definitions.
 - `data`: Local development store for source uploads, extracted artifacts, exports, and `dev-store.json`.
+- `apps/web/lib/store.ts`: persistence facade that selects the local JSON adapter or Supabase adapter from environment configuration.
+- `apps/web/lib/fileStorage.ts`: storage facade that writes to local folders in local mode and Supabase Storage in hosted mode.
 
 ## Data Flow
 
@@ -49,6 +51,7 @@ The web app and database consume only normalized fields, including `raw_ocr_text
 - V1 is end-to-end runnable locally without a hosted Supabase project by using a local JSON store that mirrors the Supabase schema.
 - The Supabase migration is still first-class and defines the production data contract.
 - Auth is mode-aware: local mode uses a local development actor, while Supabase mode requires a verified Supabase user for project, upload, artifact, review, and output routes.
+- Persistence is mode-aware and fail-closed: when Supabase environment variables are configured, project records and files use Supabase database/storage rather than falling back to local JSON/files.
 - Hosted storage objects are user-owned by path convention: the first object path segment must be the authenticated user's UUID.
 - OCR and interpretation degrade gracefully, preserving the review workflow even when native OCR or LLM providers are unavailable.
 - OCR backend experimentation is isolated to the parser service.

@@ -1,6 +1,6 @@
-import { promises as fs } from "node:fs";
 import { NextResponse } from "next/server";
 import { requireApiAuth, storeOwnerId } from "@/lib/auth";
+import { contentTypeForFilename, readManagedFile } from "@/lib/fileStorage";
 import { getArtifactDetail } from "@/lib/store";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -13,21 +13,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!detail) {
     return NextResponse.json({ error: "Artifact not found." }, { status: 404 });
   }
-  const data = await fs.readFile(detail.artifact.image_path);
+  const data = await readManagedFile(detail.artifact.image_path);
   return new Response(data, {
     headers: {
-      "content-type": contentType(detail.artifact.image_path),
+      "content-type": contentTypeForFilename(detail.artifact.image_path),
       "cache-control": "private, max-age=60"
     }
   });
-}
-
-function contentType(filename: string): string {
-  if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
-    return "image/jpeg";
-  }
-  if (filename.endsWith(".webp")) {
-    return "image/webp";
-  }
-  return "image/png";
 }

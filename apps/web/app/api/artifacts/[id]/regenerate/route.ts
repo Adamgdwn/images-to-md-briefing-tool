@@ -1,6 +1,6 @@
-import { promises as fs } from "node:fs";
 import { NextResponse } from "next/server";
 import { requireApiAuth, storeOwnerId } from "@/lib/auth";
+import { contentTypeForFilename, managedFileName, readManagedFile } from "@/lib/fileStorage";
 import { regenerateArtifactImage } from "@/lib/parser";
 import { getArtifactDetail, replaceArtifactExtraction } from "@/lib/store";
 
@@ -23,10 +23,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const submittedNotes = typeof payload.reviewer_notes === "string" ? payload.reviewer_notes : "";
     const latestReview = detail.reviews[0];
     const reviewerNotes = (submittedNotes || cleanReviewerNotes(latestReview?.notes ?? "")).trim();
-    const imageBuffer = await fs.readFile(detail.artifact.image_path);
+    const imageBuffer = await readManagedFile(detail.artifact.image_path);
     const regenerated = await regenerateArtifactImage({
-      image: new Blob([imageBuffer], { type: contentType(detail.artifact.image_path) }),
-      filename: detail.artifact.image_path.split("/").pop() ?? "artifact.png",
+      image: new Blob([imageBuffer], { type: contentTypeForFilename(detail.artifact.image_path) }),
+      filename: managedFileName(detail.artifact.image_path, "artifact.png"),
       sourceDocument: detail.source_document?.filename ?? "source image",
       artifactId: detail.artifact.id,
       pageNumber: detail.artifact.page_number,
@@ -57,16 +57,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
-}
-
-function contentType(filename: string): string {
-  if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
-    return "image/jpeg";
-  }
-  if (filename.endsWith(".webp")) {
-    return "image/webp";
-  }
-  return "image/png";
 }
 
 function cleanReviewerNotes(value: string) {

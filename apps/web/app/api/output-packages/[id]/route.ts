@@ -1,6 +1,6 @@
-import { promises as fs } from "node:fs";
 import { NextResponse } from "next/server";
 import { requireApiAuth, storeOwnerId } from "@/lib/auth";
+import { deleteManagedFile } from "@/lib/fileStorage";
 import { deleteOutputPackage } from "@/lib/store";
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -15,7 +15,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   if (outputPackage.storage_path) {
-    await fs.unlink(outputPackage.storage_path).catch(() => undefined);
+    await deleteManagedFile(outputPackage.storage_path);
   }
 
   return NextResponse.json({ deleted: true });

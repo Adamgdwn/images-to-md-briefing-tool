@@ -89,7 +89,7 @@ npm --workspace apps/web run dev
 
 ## Supabase
 
-Apply every SQL file in `supabase/migrations` in filename order to provision the production database, RLS policies, and storage buckets. The local app currently uses the same entity shape through a JSON store so the end-to-end workflow can run without hosted infrastructure. See `docs/supabase-migration-path.md` before applying hosted storage policies to existing data.
+Apply every SQL file in `supabase/migrations` in filename order to provision the production database, RLS policies, and storage buckets. The local app uses the same entity shape through a JSON store when Supabase env vars are absent. When Supabase env vars are present, records and files are written to Supabase database/storage and `SUPABASE_SERVICE_ROLE_KEY` is required on the server. See `docs/supabase-migration-path.md` before applying hosted storage policies to existing data.
 
 ## Validation
 

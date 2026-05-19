@@ -80,6 +80,12 @@ When Supabase environment variables are configured, use `/login` for email/passw
 
 Hosted API clients must send the Supabase access token as `Authorization: Bearer <token>` or use the app sign-in flow, which stores a server-readable session cookie for browser downloads and image previews.
 
+## Persistence Modes
+
+Local laptop mode stores records in `data/dev-store.json` and files under `data/uploads`, `data/artifacts`, and `data/exports`.
+
+Supabase mode is active when Supabase environment variables are configured. In that mode, records are written to Supabase tables and files are written to Supabase Storage buckets. The app does not silently fall back to local persistence if Supabase service configuration is incomplete.
+
 ## Output Modes
 
 - Bulk LLM export
