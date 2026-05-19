@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireApiAuth, storeOwnerId } from "@/lib/auth";
 import { buildBulkLlmExport, exportTimestamp, formatTextExport, outputExtension } from "@/lib/outputExport";
 import { exportsDir } from "@/lib/paths";
 import { generatePackageWithParser } from "@/lib/parser";
@@ -20,11 +21,15 @@ const packageSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const authResult = await requireApiAuth(request);
+  if ("response" in authResult) {
+    return authResult.response;
+  }
   const parsed = packageSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const bundle = await getProjectBundle(parsed.data.project_id);
+  const bundle = await getProjectBundle(parsed.data.project_id, storeOwnerId(authResult.auth));
   if (!bundle) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 });
   }

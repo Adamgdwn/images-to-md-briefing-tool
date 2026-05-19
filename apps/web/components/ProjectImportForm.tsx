@@ -3,6 +3,7 @@
 import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
+import { authFetch } from "@/lib/authClient";
 
 export function ProjectImportForm() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export function ProjectImportForm() {
     const formData = new FormData();
     formData.set("file", file);
     try {
-      const response = await fetch("/api/projects/import", {
+      const response = await authFetch("/api/projects/import", {
         method: "POST",
         body: formData
       });

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { Check, RotateCcw, Save, X } from "lucide-react";
+import { authFetch } from "@/lib/authClient";
 import type { Artifact, ArtifactCategory, ArtifactExtraction, ArtifactReview, ArtifactSubtype, ArtifactType } from "@/types/domain";
 
 const artifactTypes: ArtifactType[] = [
@@ -111,7 +112,7 @@ export function ReviewForm({
       classification_reasons: classificationReasonsList
     };
 
-    const response = await fetch(`/api/artifacts/${artifact.id}/review`, {
+    const response = await authFetch(`/api/artifacts/${artifact.id}/review`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -323,7 +324,7 @@ export function ReviewForm({
                 return;
               }
               setStatus("Regenerating from image...");
-              const response = await fetch(`/api/artifacts/${artifact.id}/regenerate`, {
+              const response = await authFetch(`/api/artifacts/${artifact.id}/regenerate`, {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({ reviewer_notes: notes })

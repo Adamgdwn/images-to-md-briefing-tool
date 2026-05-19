@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { requireApiAuth, storeOwnerId } from "@/lib/auth";
 import { artifactsDir, uploadsDir } from "@/lib/paths";
 import { parseSourceDocument } from "@/lib/parser";
 import {
@@ -15,6 +16,10 @@ import {
 const allowedTypes = new Set(["docx", "odt", "odp", "ods", "odg", "pdf", "png", "jpg", "jpeg", "webp"]);
 
 export async function POST(request: Request) {
+  const authResult = await requireApiAuth(request);
+  if ("response" in authResult) {
+    return authResult.response;
+  }
   const formData = await request.formData();
   const projectId = String(formData.get("project_id") ?? "");
   const files = formData.getAll("files").filter((value): value is File => value instanceof File);
@@ -22,7 +27,7 @@ export async function POST(request: Request) {
   if (!projectId || files.length === 0) {
     return NextResponse.json({ error: "project_id and at least one file are required." }, { status: 400 });
   }
-  const bundle = await getProjectBundle(projectId);
+  const bundle = await getProjectBundle(projectId, storeOwnerId(authResult.auth));
   if (!bundle) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 });
   }

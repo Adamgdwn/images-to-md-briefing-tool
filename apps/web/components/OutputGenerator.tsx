@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { CheckCircle, FileDown, LoaderCircle } from "lucide-react";
+import { authFetch } from "@/lib/authClient";
 import type { ExportContent, ExportFormat, OutputPackage, PackageType, ProjectBundle } from "@/types/domain";
 
 const packageTypes: Array<{ value: PackageType; label: string }> = [
@@ -51,7 +52,7 @@ export function OutputGenerator({ bundle }: { bundle: ProjectBundle }) {
     setIsGenerating(true);
     setStatus("Generating package...");
     try {
-      const response = await fetch("/api/output-packages", {
+      const response = await authFetch("/api/output-packages", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

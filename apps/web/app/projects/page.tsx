@@ -1,10 +1,12 @@
 import { ProjectCreateForm } from "@/components/ProjectCreateForm";
 import { ProjectImportForm } from "@/components/ProjectImportForm";
 import { ProjectList } from "@/components/ProjectList";
+import { requirePageAuth, storeOwnerId } from "@/lib/auth";
 import { listProjectSummaries } from "@/lib/store";
 
 export default async function ProjectsPage() {
-  const projects = await listProjectSummaries();
+  const auth = await requirePageAuth();
+  const projects = await listProjectSummaries(storeOwnerId(auth));
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-6">

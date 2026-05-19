@@ -22,6 +22,8 @@ Use the Ubuntu or Windows launchers in `scripts/`.
 
 See `docs/supabase-migration-path.md` for migration notes, storage policy expectations, and cascade-delete behavior.
 
+When Supabase env vars are present, the web app enforces authentication on project, upload, artifact, review, and output API routes. Browser sign-in stores a short-lived HTTP-only app session cookie so server-rendered pages, artifact images, and file downloads can authorize the current user. Non-browser clients must pass a Supabase access token with `Authorization: Bearer <token>`.
+
 ## Web App
 
 Deploy `apps/web` to Vercel. Set `PARSER_URL` to the reachable FastAPI service URL.

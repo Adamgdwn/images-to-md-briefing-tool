@@ -1,19 +1,24 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { requireApiAuth, storeOwnerId } from "@/lib/auth";
 import { buildBulkLlmExport, exportTimestamp, formatTextExport, normalizeTextExportOptions, outputExtension } from "@/lib/outputExport";
 import { exportsDir } from "@/lib/paths";
 import { generatePackageWithParser } from "@/lib/parser";
 import { getOutputPackage, getProjectBundle, updateOutputPackage } from "@/lib/store";
 
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const authResult = await requireApiAuth(request);
+  if ("response" in authResult) {
+    return authResult.response;
+  }
   const { id } = await params;
-  const outputPackage = await getOutputPackage(id);
+  const outputPackage = await getOutputPackage(id, storeOwnerId(authResult.auth));
   if (!outputPackage) {
     return NextResponse.json({ error: "Output package not found." }, { status: 404 });
   }
 
-  const bundle = await getProjectBundle(outputPackage.project_id);
+  const bundle = await getProjectBundle(outputPackage.project_id, storeOwnerId(authResult.auth));
   if (!bundle) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 });
   }

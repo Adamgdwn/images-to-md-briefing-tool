@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReviewBadge } from "@/components/ArtifactList";
 import { ReviewForm } from "@/components/ReviewForm";
+import { requirePageAuth, storeOwnerId } from "@/lib/auth";
 import { getArtifactDetail } from "@/lib/store";
 
 export default async function ArtifactReviewPage({ params }: { params: Promise<{ id: string }> }) {
+  const auth = await requirePageAuth();
   const { id } = await params;
-  const detail = await getArtifactDetail(id);
+  const detail = await getArtifactDetail(id, storeOwnerId(auth));
   if (!detail) {
     notFound();
   }

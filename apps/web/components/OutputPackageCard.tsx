@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Download, RefreshCw, Trash2 } from "lucide-react";
+import { authFetch } from "@/lib/authClient";
 import type { OutputPackage } from "@/types/domain";
 
 const packageLabels: Record<OutputPackage["package_type"], string> = {
@@ -21,7 +22,7 @@ export function OutputPackageCard({ item }: { item: OutputPackage }) {
 
   async function regenerate() {
     setStatus("Regenerating...");
-    const response = await fetch(`/api/output-packages/${item.id}/regenerate`, { method: "POST" });
+    const response = await authFetch(`/api/output-packages/${item.id}/regenerate`, { method: "POST" });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       setStatus(data.error || "Could not regenerate output.");
@@ -38,7 +39,7 @@ export function OutputPackageCard({ item }: { item: OutputPackage }) {
     setIsDeleting(true);
     setStatus("Deleting...");
     try {
-      const response = await fetch(`/api/output-packages/${item.id}`, { method: "DELETE" });
+      const response = await authFetch(`/api/output-packages/${item.id}`, { method: "DELETE" });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         setStatus(data.error || "Could not delete export.");

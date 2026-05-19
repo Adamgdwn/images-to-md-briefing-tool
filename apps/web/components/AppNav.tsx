@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, Home, KeyRound, PanelsTopLeft, Settings } from "lucide-react";
 
-export function AppNav() {
+export function AppNav({ mode, signedIn }: { mode: "local" | "supabase"; signedIn: boolean }) {
   return (
     <div className="border-b border-line bg-mist">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-6 py-2">
@@ -30,7 +30,7 @@ export function AppNav() {
         </Link>
         <Link href="/login" className="inline-flex h-9 items-center gap-2 border border-line bg-white px-3 text-sm font-medium" title="Sign in">
           <KeyRound size={16} />
-          Sign In
+          {mode === "local" ? "Local Mode" : signedIn ? "Account" : "Sign In"}
         </Link>
       </div>
     </div>

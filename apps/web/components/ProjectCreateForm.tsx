@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Plus } from "lucide-react";
+import { authFetch } from "@/lib/authClient";
 
 export function ProjectCreateForm() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export function ProjectCreateForm() {
     event.preventDefault();
     setSubmitting(true);
     setError("");
-    const response = await fetch("/api/projects", {
+    const response = await authFetch("/api/projects", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name, client_context: clientContext })

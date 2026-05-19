@@ -1,16 +1,29 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, Link as LinkIcon, LogIn } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 export function AuthPanel() {
   const router = useRouter();
-  const supabase = getSupabaseBrowserClient();
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState(supabase ? "" : "Local mode is active because Supabase env vars are not configured.");
+
+  useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        await syncServerSession();
+        setStatus("Signed in.");
+        router.refresh();
+      }
+    });
+  }, [router, supabase]);
 
   async function signIn(event: FormEvent) {
     event.preventDefault();
@@ -24,7 +37,9 @@ export function AuthPanel() {
       setStatus(error.message);
       return;
     }
+    await syncServerSession();
     router.push("/projects");
+    router.refresh();
   }
 
   async function sendMagicLink() {
@@ -35,7 +50,7 @@ export function AuthPanel() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/projects`
+        emailRedirectTo: `${window.location.origin}/login`
       }
     });
     setStatus(error ? error.message : "Magic link sent.");
@@ -46,8 +61,18 @@ export function AuthPanel() {
       setStatus("Account creation requires Supabase env vars.");
       return;
     }
-    const { error } = await supabase.auth.signUp({ email, password });
-    setStatus(error ? error.message : "Account created. Check email if confirmation is required.");
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      setStatus(error.message);
+      return;
+    }
+    if (data.session) {
+      await syncServerSession();
+      router.push("/projects");
+      router.refresh();
+      return;
+    }
+    setStatus("Account created. Check email if confirmation is required.");
   }
 
   return (
@@ -99,4 +124,24 @@ export function AuthPanel() {
       <p className="min-h-5 text-sm text-slate-600">{status}</p>
     </form>
   );
+}
+
+async function syncServerSession() {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) {
+    return;
+  }
+  const { data } = await supabase.auth.getSession();
+  const session = data.session;
+  if (!session) {
+    return;
+  }
+  await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      access_token: session.access_token,
+      expires_in: session.expires_in
+    })
+  });
 }

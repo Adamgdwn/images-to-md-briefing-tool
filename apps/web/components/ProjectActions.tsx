@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, Download, Save, Trash2 } from "lucide-react";
+import { authFetch } from "@/lib/authClient";
 import type { Project } from "@/types/domain";
 
 export function ProjectActions({ project }: { project: Project }) {
@@ -20,7 +21,7 @@ export function ProjectActions({ project }: { project: Project }) {
     setIsSubmitting(true);
     setStatus("Saving...");
     try {
-      const response = await fetch(`/api/projects/${project.id}`, {
+      const response = await authFetch(`/api/projects/${project.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name, client_context: clientContext })
@@ -43,7 +44,7 @@ export function ProjectActions({ project }: { project: Project }) {
     setIsSubmitting(true);
     setStatus(nextStatus === "archived" ? "Archiving..." : "Restoring...");
     try {
-      const response = await fetch(`/api/projects/${project.id}`, {
+      const response = await authFetch(`/api/projects/${project.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ status: nextStatus })
@@ -73,7 +74,7 @@ export function ProjectActions({ project }: { project: Project }) {
     setIsDeleting(true);
     setStatus("Deleting project...");
     try {
-      const response = await fetch(`/api/projects/${project.id}`, {
+      const response = await authFetch(`/api/projects/${project.id}`, {
         method: "DELETE",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ confirm_name: deleteConfirmation })

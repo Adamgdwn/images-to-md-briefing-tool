@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireApiAuth, storeOwnerId } from "@/lib/auth";
 import { getArtifactDetail, saveArtifactReview } from "@/lib/store";
 
 const reviewSchema = z.object({
@@ -59,12 +60,16 @@ const reviewSchema = z.object({
 });
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const authResult = await requireApiAuth(request);
+  if ("response" in authResult) {
+    return authResult.response;
+  }
   const { id } = await params;
   const parsed = reviewSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const detail = await getArtifactDetail(id);
+  const detail = await getArtifactDetail(id, storeOwnerId(authResult.auth));
   if (!detail) {
     return NextResponse.json({ error: "Artifact not found." }, { status: 404 });
   }
@@ -74,7 +79,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const review = await saveArtifactReview({
     artifact_id: id,
     ...parsed.data,
-    notes: parsed.data.notes ?? ""
+    notes: parsed.data.notes ?? "",
+    ownerId: storeOwnerId(authResult.auth)
   });
   return NextResponse.json({ review });
 }

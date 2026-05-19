@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
+import { requireApiAuth, storeOwnerId } from "@/lib/auth";
 import { filenameTimestampFromOutput, outputContentType, outputExtension } from "@/lib/outputExport";
 import { getOutputPackage } from "@/lib/store";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const authResult = await requireApiAuth(request);
+  if ("response" in authResult) {
+    return authResult.response;
+  }
   const { id } = await params;
-  const outputPackage = await getOutputPackage(id);
+  const outputPackage = await getOutputPackage(id, storeOwnerId(authResult.auth));
   if (!outputPackage) {
     return NextResponse.json({ error: "Output package not found." }, { status: 404 });
   }

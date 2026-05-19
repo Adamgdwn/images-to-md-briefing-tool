@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Upload } from "lucide-react";
+import { authFetch } from "@/lib/authClient";
 
 export function UploadForm({ projectId }: { projectId: string }) {
   const router = useRouter();
@@ -21,7 +22,7 @@ export function UploadForm({ projectId }: { projectId: string }) {
     const body = new FormData();
     body.append("project_id", projectId);
     Array.from(files).forEach((file) => body.append("files", file));
-    const response = await fetch("/api/uploads", { method: "POST", body });
+    const response = await authFetch("/api/uploads", { method: "POST", body });
     const result = await response.json().catch(() => ({}));
     setSubmitting(false);
     if (!response.ok) {

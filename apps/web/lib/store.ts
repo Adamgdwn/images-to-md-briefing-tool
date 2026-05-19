@@ -80,14 +80,14 @@ export async function writeStore(data: StoreData) {
   await fs.writeFile(storePath(), JSON.stringify(data, null, 2));
 }
 
-export async function listProjects(): Promise<Project[]> {
+export async function listProjects(ownerId?: string): Promise<Project[]> {
   const data = await readStore();
-  return data.projects.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  return filterProjects(data.projects, ownerId).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
 
-export async function listProjectSummaries(): Promise<ProjectSummary[]> {
+export async function listProjectSummaries(ownerId?: string): Promise<ProjectSummary[]> {
   const data = await readStore();
-  return data.projects
+  return filterProjects(data.projects, ownerId)
     .map((project) => {
       const projectArtifacts = data.artifacts.filter((artifact) => artifact.project_id === project.id);
       const projectArtifactIds = new Set(projectArtifacts.map((artifact) => artifact.id));
@@ -109,7 +109,7 @@ export async function listProjectSummaries(): Promise<ProjectSummary[]> {
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
 
-export async function createProject(input: { name: string; client_context?: string }): Promise<Project> {
+export async function createProject(input: { name: string; client_context?: string; created_by?: string }): Promise<Project> {
   const data = await readStore();
   const now = new Date().toISOString();
   const project: Project = {
@@ -117,7 +117,7 @@ export async function createProject(input: { name: string; client_context?: stri
     name: input.name,
     client_context: input.client_context ?? "",
     status: "active",
-    created_by: SYSTEM_USER,
+    created_by: input.created_by ?? SYSTEM_USER,
     created_at: now,
     updated_at: now
   };
@@ -132,10 +132,11 @@ export async function updateProject(input: {
   name?: string;
   client_context?: string;
   status?: Project["status"];
+  ownerId?: string;
 }): Promise<Project | null> {
   const data = await readStore();
   const project = data.projects.find((item) => item.id === input.id);
-  if (!project) {
+  if (!project || !canAccessProject(project, input.ownerId)) {
     return null;
   }
   const now = new Date().toISOString();
@@ -162,14 +163,14 @@ export async function updateProject(input: {
   return project;
 }
 
-export async function deleteProject(projectId: string): Promise<{
+export async function deleteProject(projectId: string, ownerId?: string): Promise<{
   project: Project;
   deleted_files: number;
   deleted_records: Record<string, number>;
 } | null> {
   const data = await readStore();
   const project = data.projects.find((item) => item.id === projectId);
-  if (!project) {
+  if (!project || !canAccessProject(project, ownerId)) {
     return null;
   }
 
@@ -224,10 +225,10 @@ export async function deleteProject(projectId: string): Promise<{
   };
 }
 
-export async function getProjectBundle(projectId: string): Promise<ProjectBundle | null> {
+export async function getProjectBundle(projectId: string, ownerId?: string): Promise<ProjectBundle | null> {
   const data = await readStore();
   const project = data.projects.find((item) => item.id === projectId);
-  if (!project) {
+  if (!project || !canAccessProject(project, ownerId)) {
     return null;
   }
   const sourceDocuments = data.source_documents.filter((item) => item.project_id === projectId);
@@ -248,10 +249,10 @@ export async function getProjectBundle(projectId: string): Promise<ProjectBundle
   };
 }
 
-export async function createProjectBackupBundle(projectId: string): Promise<PortableProjectBundle | null> {
+export async function createProjectBackupBundle(projectId: string, ownerId?: string): Promise<PortableProjectBundle | null> {
   const data = await readStore();
   const project = data.projects.find((item) => item.id === projectId);
-  if (!project) {
+  if (!project || !canAccessProject(project, ownerId)) {
     return null;
   }
 
@@ -289,7 +290,7 @@ export async function createProjectBackupBundle(projectId: string): Promise<Port
   };
 }
 
-export async function importProjectBackupBundle(bundle: unknown): Promise<{
+export async function importProjectBackupBundle(bundle: unknown, ownerId?: string): Promise<{
   project: Project;
   imported_counts: Record<string, number>;
 }> {
@@ -317,7 +318,7 @@ export async function importProjectBackupBundle(bundle: unknown): Promise<{
     ...parsed.project,
     id: newProjectId,
     name: importedProjectName(parsed.project.name, data.projects.map((item) => item.name)),
-    created_by: SYSTEM_USER,
+    created_by: ownerId ?? SYSTEM_USER,
     updated_at: now
   };
 
@@ -628,10 +629,14 @@ export async function replaceArtifactExtraction(input: {
   return artifact;
 }
 
-export async function getArtifactDetail(artifactId: string) {
+export async function getArtifactDetail(artifactId: string, ownerId?: string) {
   const data = await readStore();
   const artifact = data.artifacts.find((item) => item.id === artifactId);
   if (!artifact) {
+    return null;
+  }
+  const project = data.projects.find((item) => item.id === artifact.project_id) ?? null;
+  if (!project || !canAccessProject(project, ownerId)) {
     return null;
   }
   return {
@@ -641,7 +646,7 @@ export async function getArtifactDetail(artifactId: string) {
     reviews: data.artifact_reviews
       .filter((item) => item.artifact_id === artifact.id)
       .sort((a, b) => b.version - a.version),
-    project: data.projects.find((item) => item.id === artifact.project_id) ?? null
+    project
   };
 }
 
@@ -671,10 +676,15 @@ export async function saveArtifactReview(input: {
   subtype: Artifact["subtype"];
   classification_confidence: number;
   classification_reasons: string[];
+  ownerId?: string;
 }): Promise<ArtifactReview> {
   const data = await readStore();
   const artifact = data.artifacts.find((item) => item.id === input.artifact_id);
   if (!artifact) {
+    throw new Error("Artifact not found.");
+  }
+  const project = data.projects.find((item) => item.id === artifact.project_id);
+  if (!project || !canAccessProject(project, input.ownerId)) {
     throw new Error("Artifact not found.");
   }
   artifact.artifact_type = input.artifact_type;
@@ -757,15 +767,27 @@ export async function updateOutputPackage(input: {
   return outputPackage;
 }
 
-export async function getOutputPackage(packageId: string): Promise<OutputPackage | null> {
+export async function getOutputPackage(packageId: string, ownerId?: string): Promise<OutputPackage | null> {
   const data = await readStore();
-  return data.output_packages.find((item) => item.id === packageId) ?? null;
+  const outputPackage = data.output_packages.find((item) => item.id === packageId) ?? null;
+  if (!outputPackage) {
+    return null;
+  }
+  const project = data.projects.find((item) => item.id === outputPackage.project_id);
+  if (!project || !canAccessProject(project, ownerId)) {
+    return null;
+  }
+  return outputPackage;
 }
 
-export async function deleteOutputPackage(packageId: string): Promise<OutputPackage | null> {
+export async function deleteOutputPackage(packageId: string, ownerId?: string): Promise<OutputPackage | null> {
   const data = await readStore();
   const index = data.output_packages.findIndex((item) => item.id === packageId);
   if (index < 0) {
+    return null;
+  }
+  const project = data.projects.find((item) => item.id === data.output_packages[index].project_id);
+  if (!project || !canAccessProject(project, ownerId)) {
     return null;
   }
   const [outputPackage] = data.output_packages.splice(index, 1);
@@ -774,8 +796,8 @@ export async function deleteOutputPackage(packageId: string): Promise<OutputPack
   return outputPackage;
 }
 
-export async function approvedArtifactsForProject(projectId: string) {
-  const bundle = await getProjectBundle(projectId);
+export async function approvedArtifactsForProject(projectId: string, ownerId?: string) {
+  const bundle = await getProjectBundle(projectId, ownerId);
   if (!bundle) {
     return [];
   }
@@ -796,6 +818,14 @@ function latestReview(data: StoreData, artifactId: string): ArtifactReview | und
 
 function mostRecentDate(values: string[]) {
   return values.filter(Boolean).sort((a, b) => b.localeCompare(a))[0] ?? new Date().toISOString();
+}
+
+function filterProjects(projects: Project[], ownerId?: string) {
+  return ownerId ? projects.filter((project) => project.created_by === ownerId) : projects;
+}
+
+function canAccessProject(project: Project, ownerId?: string) {
+  return !ownerId || project.created_by === ownerId;
 }
 
 async function unlinkManagedFile(filePath: string) {

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireApiAuth } from "@/lib/auth";
 import { importProjectBackupBundle } from "@/lib/store";
 
 export async function POST(request: Request) {
+  const authResult = await requireApiAuth(request);
+  if ("response" in authResult) {
+    return authResult.response;
+  }
   const formData = await request.formData();
   const file = formData.get("file");
   if (!(file instanceof File)) {
@@ -16,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await importProjectBackupBundle(parsed);
+    const result = await importProjectBackupBundle(parsed, authResult.auth.userId);
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Project backup could not be imported." }, { status: 400 });

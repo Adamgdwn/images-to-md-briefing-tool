@@ -74,7 +74,11 @@ Keep project backup JSON files somewhere durable if you need to move work betwee
 
 ## Authentication
 
-When Supabase environment variables are configured, use `/login` for email/password sign-in, sign-up, or magic-link delivery. Without those variables, the app runs in local laptop mode for end-to-end development.
+Without Supabase environment variables, the app runs in local laptop mode for end-to-end development. The top navigation shows Local mode and project, upload, review, and export routes remain available without sign-in.
+
+When Supabase environment variables are configured, use `/login` for email/password sign-in, sign-up, or magic-link delivery. Project, upload, artifact, review, and output API routes require a signed-in Supabase user in this mode. The top navigation shows the current account state and provides Sign Out when signed in.
+
+Hosted API clients must send the Supabase access token as `Authorization: Bearer <token>` or use the app sign-in flow, which stores a server-readable session cookie for browser downloads and image previews.
 
 ## Output Modes
 

@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireApiAuth, storeOwnerId } from "@/lib/auth";
 import { createProjectBackupBundle } from "@/lib/store";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const authResult = await requireApiAuth(request);
+  if ("response" in authResult) {
+    return authResult.response;
+  }
   const { id } = await params;
-  const bundle = await createProjectBackupBundle(id);
+  const bundle = await createProjectBackupBundle(id, storeOwnerId(authResult.auth));
   if (!bundle) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 });
   }
