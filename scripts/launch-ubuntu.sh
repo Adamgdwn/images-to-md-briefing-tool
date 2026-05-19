@@ -172,6 +172,10 @@ start_service() {
       --setenv="WEB_URL=$WEB_URL" \
       --setenv="PARSER_URL=${PARSER_URL:-http://127.0.0.1:8000}" \
       --setenv="APP_DATA_DIR=${APP_DATA_DIR:-../../data}" \
+      --setenv="NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}" \
+      --setenv="NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" \
+      --setenv="SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}" \
+      --setenv="SUPABASE_PROJECT_REF=${SUPABASE_PROJECT_REF:-}" \
       --setenv="ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}" \
       --setenv="ANTHROPIC_AUTH_MODE=${ANTHROPIC_AUTH_MODE:-claude_code}" \
       --setenv="ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-3-5-sonnet-latest}" \
