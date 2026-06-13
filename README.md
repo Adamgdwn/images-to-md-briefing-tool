@@ -1,13 +1,24 @@
 # Screenshot Briefing Tool
 
-Internal application for turning screenshot-heavy DOCX, LibreOffice/OpenDocument, PDF, and image inputs into reviewed Markdown/JSON artifacts and implementation-ready briefing packages.
+Local-first tool for turning screenshot-heavy DOCX, LibreOffice/OpenDocument, PDF, and image inputs into reviewed Markdown, JSON artifacts, and implementation-ready briefing packages.
+
+Use it when you have a pile of screenshots, rough documents, or exported design notes and want a more structured build brief before handing the work to a developer or AI coding assistant.
+
+## Public Project Snapshot
+
+- **Audience:** builders, analysts, and AI-assisted development teams that need to turn visual source material into usable implementation notes.
+- **Best for:** screenshot review, image-to-Markdown briefing, document extraction, manual review workflows, and build handoff packages.
+- **Primary workflow:** upload source files, extract candidate content, review the result, then export Markdown/JSON artifacts.
+- **Local-first mode:** runs with local launchers and a JSON development store when hosted services are not configured.
+- **License:** MIT. The repository is public, but the npm package is marked private to avoid accidental package publishing.
+- **Contributions:** issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Status
 
 - Owner: Adam Goodwin
 - Technical lead: codex session
 - Risk tier: medium
-- Production status: v1 local runnable scaffold
+- Production status: v1 local runnable scaffold, public MIT repository
 
 ## Stack
 
@@ -112,4 +123,8 @@ npm run lint
 
 ## Support Model
 
-This is an internal tool. Operational ownership stays with the project owner until a production maintainer is assigned.
+This is a shareable local tool with optional hosted-service paths. Operational ownership stays with the project owner until a production maintainer is assigned. Please avoid posting private documents, raw screenshots with personal data, API keys, service-role keys, or proprietary client material in public issues.
+
+## License
+
+MIT

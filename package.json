@@ -2,7 +2,8 @@
   "name": "images-to-md-briefing-tool",
   "private": true,
   "version": "0.1.0",
-  "description": "Internal screenshot briefing workflow for extracting, reviewing, and exporting build-ready artifacts.",
+  "description": "Local-first screenshot and document briefing workflow for extracting, reviewing, and exporting build-ready Markdown and JSON artifacts.",
+  "license": "MIT",
   "scripts": {
     "dev": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build",
